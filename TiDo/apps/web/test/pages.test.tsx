@@ -30,7 +30,7 @@ describe('authentication', () => {
   it('explains an expired invite link', async () => {
     mockApi({
       'GET /auth/me': unauthorized,
-      [`GET /auth/tokens/${'x'.repeat(43)}`]: () => ({
+      'POST /auth/tokens/lookup': () => ({
         status: 404,
         body: {
           error: { code: 'link_invalid', message: 'This link has expired or was already used.' },

@@ -36,6 +36,8 @@ export function toSessionUser(auth: AuthContext): SessionUser {
 
 export const authRoutes: FastifyPluginAsyncZod = async (app) => {
   const throttle = new LoginThrottle();
+  // A stolen session must not become a fast way to guess the account's password.
+  const passwordThrottle = new LoginThrottle();
 
   async function sessionUserFor(userId: string): Promise<SessionUser> {
     const [row] = await app.db
@@ -139,13 +141,18 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
     { schema: { body: changePasswordSchema, response: { 200: sessionUserSchema } } },
     async (request, reply) => {
       const auth = requireAuth(request.auth);
+      if (passwordThrottle.isBlocked(auth.userId)) {
+        throw new AppError(429, 'rate_limited', 'Too many attempts. Try again later.');
+      }
       const [user] = await app.db
         .select({ passwordHash: users.passwordHash })
         .from(users)
         .where(eq(users.id, auth.userId));
       if (!(await verifyPassword(user?.passwordHash ?? null, request.body.currentPassword))) {
+        passwordThrottle.recordFailure(auth.userId);
         throw badRequest('Your current password is incorrect.', 'invalid_password');
       }
+      passwordThrottle.reset(auth.userId);
       const passwordHash = await hashPassword(request.body.newPassword);
       const session = await app.db.transaction(async (tx) => {
         await tx
@@ -169,17 +176,18 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
     },
   );
 
-  app.get(
-    '/auth/tokens/:token',
+  // POST, so the token travels in the body and never lands in access logs or trace URLs.
+  app.post(
+    '/auth/tokens/lookup',
     {
       config: {
         public: true,
         rateLimit: { max: app.config.loginRateLimitMax * 3, timeWindow: '1 minute' },
       },
-      schema: { params: tokenLookupSchema, response: { 200: tokenInfoSchema } },
+      schema: { body: tokenLookupSchema, response: { 200: tokenInfoSchema } },
     },
     async (request) => {
-      const token = await findUsableToken(app.db, app.config.sessionSecret, request.params.token);
+      const token = await findUsableToken(app.db, app.config.sessionSecret, request.body.token);
       if (!token) throw invalidLink();
       return { email: token.email, displayName: token.displayName, kind: token.kind };
     },

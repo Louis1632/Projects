@@ -8,7 +8,8 @@ services:
       POSTGRES_USER: tido
       POSTGRES_PASSWORD: tido
     ports:
-      - '5432:5432'
+      # Loopback only: Docker's port rules bypass ufw, so 0.0.0.0 would expose this to the LAN.
+      - '127.0.0.1:5432:5432'
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U tido -d tido']
       interval: 5s

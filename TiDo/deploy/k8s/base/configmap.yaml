@@ -10,7 +10,8 @@ data:
   WEB_ORIGIN: https://tido-staging.home.arpa
   COOKIE_SECURE: 'true'
   SESSION_COOKIE_NAME: __Host-tido_session
-  TRUST_PROXY: 'true'
+  # One hop: Traefik. Clients cannot pick their own IP with a forged X-Forwarded-For.
+  TRUST_PROXY: '1'
   WORKSPACE_TIMEZONE: Africa/Johannesburg
   LOG_LEVEL: info
   METRICS_PORT: '9464'

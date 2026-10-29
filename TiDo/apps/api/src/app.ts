@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type FastifyOtelInstrumentation from '@fastify/otel';
-import Fastify, { type FastifyServerOptions } from 'fastify';
+import Fastify, { type FastifyRequest, type FastifyServerOptions } from 'fastify';
 import {
   jsonSchemaTransform,
   serializerCompiler,
@@ -11,6 +11,7 @@ import { sql } from 'drizzle-orm';
 import { Registry } from 'prom-client';
 import type { Database } from '@tido/db';
 import type { Config } from './config';
+import { redactUrl } from './lib/redact';
 import { authRoutes } from './modules/auth/routes';
 import { dashboardRoutes } from './modules/dashboard/routes';
 import { labelRoutes } from './modules/labels/routes';
@@ -37,9 +38,22 @@ export async function buildApp({ config, db, logger, metricsRegistry, tracing }:
     logger: logger ?? {
       level: config.logLevel,
       redact: ['req.headers.cookie', 'req.headers.authorization', 'res.headers["set-cookie"]'],
+      serializers: {
+        req: (request: FastifyRequest) => ({
+          method: request.method,
+          url: redactUrl(request.url),
+          host: request.host,
+          remoteAddress: request.ip,
+          remotePort: request.socket?.remotePort,
+        }),
+      },
       mixin: traceLogFields,
     },
-    trustProxy: config.trustProxy,
+    // A hop count trusts only that many proxies nearest the API (the same rule proxy-addr uses).
+    trustProxy:
+      typeof config.trustProxy === 'number'
+        ? (_address: string, hop: number) => hop < (config.trustProxy as number)
+        : config.trustProxy,
     genReqId: () => randomUUID(),
     bodyLimit: 256 * 1024,
   }).withTypeProvider<ZodTypeProvider>();

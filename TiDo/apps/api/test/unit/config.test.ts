@@ -23,6 +23,15 @@ describe('loadConfig', () => {
     );
   });
 
+  it('accepts a boolean or a hop count for TRUST_PROXY', () => {
+    expect(loadConfig(base).trustProxy).toBe(false);
+    expect(loadConfig({ ...base, TRUST_PROXY: 'true' }).trustProxy).toBe(true);
+    expect(loadConfig({ ...base, TRUST_PROXY: '0' }).trustProxy).toBe(false);
+    expect(loadConfig({ ...base, TRUST_PROXY: '1' }).trustProxy).toBe(1);
+    expect(loadConfig({ ...base, TRUST_PROXY: '2' }).trustProxy).toBe(2);
+    expect(() => loadConfig({ ...base, TRUST_PROXY: 'yes' })).toThrow(/TRUST_PROXY/);
+  });
+
   it('refuses the example secret in production', () => {
     expect(() =>
       loadConfig({

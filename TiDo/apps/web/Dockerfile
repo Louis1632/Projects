@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 # Build from the TiDo directory:  docker build -f apps/web/Dockerfile -t tido-web .
-FROM node:22-alpine AS build
+FROM node:22-alpine@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914 AS build
 RUN npm install --global --no-fund --no-audit pnpm@12.16.1
 WORKDIR /repo
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json ./
@@ -17,7 +17,8 @@ ARG TIDO_REVISION=unknown
 RUN TIDO_REVISION="$TIDO_REVISION" pnpm --filter @tido/web build
 
 # Runs as uid 101 on port 8080; needs only /tmp writable.
-FROM nginxinc/nginx-unprivileged:1.30-alpine AS runtime
+FROM nginxinc/nginx-unprivileged:1.30-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03 AS runtime
 COPY deploy/docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY deploy/docker/security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY --from=build /repo/apps/web/dist /usr/share/nginx/html
 EXPOSE 8080

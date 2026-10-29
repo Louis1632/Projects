@@ -49,6 +49,21 @@ export const releases: Release[] = [
     ],
   },
   {
+    version: '0.1.1',
+    date: '2026-10-29',
+    summary: 'Security improvements. You will need to sign in again once after this update.',
+    changes: [
+      {
+        kind: 'improved',
+        text: 'Sign-in links and sessions are better protected. Everyone is signed out once.',
+      },
+      {
+        kind: 'improved',
+        text: 'Too many wrong guesses of your current password now pause password changes for a while.',
+      },
+    ],
+  },
+  {
     version: '0.1.0',
     date: '2026-10-29',
     summary: 'The first release of TiDo, a shared task list for your household or team.',

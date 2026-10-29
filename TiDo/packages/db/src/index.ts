@@ -6,7 +6,7 @@ export * from './schema';
 export { schema };
 export { runMigrations } from './migrate';
 export { bootstrapOwner, BootstrapError, type BootstrapOptions } from './bootstrap';
-export { generateToken, hashToken } from './tokens';
+export { generateToken, hashToken, type TokenPurpose } from './tokens';
 
 export interface DbOptions {
   /** Maximum pool size; keep small because each API replica holds its own pool. */
