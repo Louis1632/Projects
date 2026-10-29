@@ -31,7 +31,7 @@ patches:
 images:
   - name: tido-api
     newName: localhost:5000/tido/api
-    digest: sha256:1b1f1fd710ba57795068d328f713bd2b5cb4fbd75e56e6837260fd43d7177e8e
+    digest: sha256:d874ac5a6c4240fb7936c61a10e1c16b0a3ab1a10b34bd655a129c57fe8eb7db
   - name: tido-web
     newName: localhost:5000/tido/web
-    digest: sha256:c7b749a79c184e5cbbc9b5a9590fb2f1c40cf5fdc2982d7dfb0f4c7d91e146f6
+    digest: sha256:53c2e259e70fd8af9128b1c8f929f166511a085232f2497c0e0d093f166bc39b
