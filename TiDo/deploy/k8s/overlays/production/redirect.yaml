@@ -23,7 +23,7 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
-    - host: tido.example.com
+    - host: synisterpc.tailbe657c.ts.net
       http:
         paths:
           - path: /

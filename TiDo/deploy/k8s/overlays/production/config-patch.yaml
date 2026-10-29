@@ -3,4 +3,4 @@ kind: ConfigMap
 metadata:
   name: tido-api-config
 data:
-  WEB_ORIGIN: https://tido.example.com
+  WEB_ORIGIN: https://synisterpc.tailbe657c.ts.net
