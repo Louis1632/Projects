@@ -823,6 +823,10 @@ legend {
   margin-top: 0.4rem;
 }
 
+.add-task-form {
+  margin-top: 0.4rem;
+}
+
 .add-subtask {
   grid-column: 2 / -1;
   justify-self: start;

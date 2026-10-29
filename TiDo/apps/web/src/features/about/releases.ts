@@ -16,6 +16,17 @@ export interface Release {
 
 export const releases: Release[] = [
   {
+    version: '0.4.0',
+    date: '2026-10-30',
+    summary: 'Add tasks quickly, one after another, straight from a column.',
+    changes: [
+      {
+        kind: 'improved',
+        text: '“+ Add task” opens a field in the column: type a task, press Enter, and type the next. Open a task afterwards to add a due date or other details.',
+      },
+    ],
+  },
+  {
     version: '0.3.0',
     date: '2026-10-30',
     summary: 'Name your sections, add subtasks in place, and a tidier board.',

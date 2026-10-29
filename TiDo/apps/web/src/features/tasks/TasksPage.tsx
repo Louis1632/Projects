@@ -6,6 +6,7 @@ import { useDashboard, useWorkspaceMutation } from '../../lib/queries';
 import { useShell } from '../layout/AppShell';
 import { defaultFilters, filtersActive, taskMatches, type TaskFilters } from './filters';
 import { priorityLabels, statusLabels } from './labels';
+import { QuickAdd } from './QuickAdd';
 import { AddSection, SectionName } from './SectionControls';
 import { TaskRow } from './TaskRow';
 
@@ -44,6 +45,9 @@ export function TasksPage() {
   const renameSection = useWorkspaceMutation((input: { section: Section; name: string }) =>
     api.updateSection(input.section.id, { name: input.name, revision: input.section.revision }),
   );
+  const addTask = useWorkspaceMutation((input: { sectionId: string; title: string }) =>
+    api.createTask(input),
+  );
   const addSubtask = useWorkspaceMutation((input: { task: Task; title: string }) =>
     api.createTask({
       sectionId: input.task.sectionId,
@@ -57,6 +61,12 @@ export function TasksPage() {
     promise.catch((error: unknown) =>
       notify(error instanceof Error ? error.message : 'Could not save.'),
     );
+  // Like `run`, but still rejects, so a quick-add field keeps what was typed.
+  const save = (promise: Promise<unknown>) =>
+    promise.catch((error: unknown) => {
+      notify(error instanceof Error ? error.message : 'Could not save.');
+      throw error;
+    });
 
   const projects = projectId
     ? dashboard.projects.filter((project) => project.id === projectId)
@@ -311,7 +321,7 @@ export function TasksPage() {
                         onEdit={(item) => openEditor({ mode: 'edit', task: item })}
                         onToggle={(item) => void run(toggle.mutateAsync(item))}
                         onAddSubtask={(item, title) =>
-                          run(addSubtask.mutateAsync({ task: item, title }))
+                          save(addSubtask.mutateAsync({ task: item, title }))
                         }
                         onMove={(item, direction) => {
                           const index = section.tasks.findIndex(
@@ -352,12 +362,14 @@ export function TasksPage() {
                         {section.tasks.length ? 'No matching tasks.' : 'No tasks yet.'}
                       </p>
                     )}
-                    <button
-                      className="text-button add-task"
-                      onClick={() => openEditor({ mode: 'create', sectionId: section.id })}
-                    >
-                      + Add task
-                    </button>
+                    <QuickAdd
+                      label="+ Add task"
+                      buttonLabel={`Add a task to ${section.name}`}
+                      fieldLabel={`New task in ${section.name}`}
+                      placeholder="Task, then Enter"
+                      className="add-task"
+                      onAdd={(title) => save(addTask.mutateAsync({ sectionId: section.id, title }))}
+                    />
                   </section>
                 );
               })}

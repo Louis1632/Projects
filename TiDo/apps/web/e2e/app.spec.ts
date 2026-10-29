@@ -87,6 +87,23 @@ test('owner completes setup and organises tasks', async ({ page }) => {
   await row.getByLabel('New subtask for Clean the garage').press('Enter');
   await expect(row.getByText('Recycle old paint')).toBeVisible();
 
+  // Tasks are added quickly from a column, one after another, and detailed afterwards.
+  const thisWeek = page.getByRole('region', { name: 'House – This week' });
+  await thisWeek.getByRole('button', { name: 'Add a task to This week' }).click();
+  const quickTask = thisWeek.getByLabel('New task in This week');
+  await quickTask.fill('Buy bulbs');
+  await quickTask.press('Enter');
+  await expect(quickTask).toHaveValue('');
+  await quickTask.fill('Fix the gate');
+  await quickTask.press('Enter');
+  await expect(thisWeek.getByTestId('task-row')).toHaveText([/Buy bulbs/, /Fix the gate/]);
+  await thisWeek.getByRole('button', { name: 'Buy bulbs', exact: true }).click();
+  const details = page.getByRole('dialog');
+  await details.getByLabel('Due date').fill('2030-01-15');
+  await details.getByRole('button', { name: 'Save changes' }).click();
+  await expect(details).toBeHidden();
+  await expect(thisWeek.getByTestId('task-row').first()).toContainText('◷');
+
   // The one-time setup link cannot be reused.
   await page.context().clearCookies();
   await page.goto(new URL(ownerSetupUrl).pathname);

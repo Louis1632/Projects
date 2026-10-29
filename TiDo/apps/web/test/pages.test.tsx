@@ -258,6 +258,38 @@ describe('list and section controls', () => {
     expect(screen.getByLabelText('New subtask for Sweep porch')).toHaveValue('');
   });
 
+  it('adds tasks one after another from the column, keeping the field open', async () => {
+    const calls = signedIn({ 'POST /tasks': () => ({ status: 201, body: {} }) });
+    renderApp('/tasks');
+    await userEvent.click(await screen.findByRole('button', { name: 'Add a task to Tasks' }));
+    const field = screen.getByLabelText('New task in Tasks');
+    await userEvent.type(field, 'Water plants{Enter}');
+    await waitFor(() => expect(field).toHaveValue(''));
+    await userEvent.type(field, 'Feed cat{Enter}');
+    await waitFor(() =>
+      expect(calls.filter((call) => call.method === 'POST').map((call) => call.body)).toEqual([
+        { sectionId, title: 'Water plants' },
+        { sectionId, title: 'Feed cat' },
+      ]),
+    );
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByLabelText('New task in Tasks')).not.toBeInTheDocument();
+  });
+
+  it('keeps a quick-added title when saving fails', async () => {
+    signedIn({
+      'POST /tasks': () => ({
+        status: 500,
+        body: { error: { code: 'internal', message: 'Something went wrong.' } },
+      }),
+    });
+    renderApp('/tasks');
+    await userEvent.click(await screen.findByRole('button', { name: 'Add a task to Tasks' }));
+    await userEvent.type(screen.getByLabelText('New task in Tasks'), 'Water plants{Enter}');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Something went wrong.');
+    expect(screen.getByLabelText('New task in Tasks')).toHaveValue('Water plants');
+  });
+
   it('archives a list from the sidebar and leaves its page', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     const calls = signedIn({ [`PATCH /projects/${houseId}`]: () => ({ body: {} }) });
