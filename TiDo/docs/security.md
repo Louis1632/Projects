@@ -20,11 +20,7 @@ Every security finding, fix and accepted risk for TiDo, with what it taught. The
 
 ## Open items
 
-| Item                                                                                                               | Severity | Waiting on                                                                                 |
-| ------------------------------------------------------------------------------------------------------------------ | -------- | ------------------------------------------------------------------------------------------ |
-| TIDO-SEC-003: the Tailscale-only allow-list is written but not yet released to production.                         | High     | HOMELAB-SEC-002. Until Traefik sees real client IPs, the allow-list would refuse everyone. |
-| TIDO-SEC-002: the API trusts exactly one proxy, but that proxy still reports an internal address for every client. | Medium   | HOMELAB-SEC-002.                                                                           |
-| TIDO-SEC-001: the running dev container still has the old port binding.                                            | High     | Run `docker compose -f deploy/compose/docker-compose.yml up -d` once.                      |
+None.
 
 ## Accepted risks
 
@@ -231,7 +227,7 @@ through. Put secrets in bodies or headers, and redact at the log pipeline as a b
 
 ### TIDO-SEC-003: Production is reachable only over Tailscale
 
-_2026-10-29 · High · Open: fix ready, waiting on HOMELAB-SEC-002_
+_2026-10-29 · High · Fixed (with HOMELAB-SEC-002)_
 
 **What was wrong:** production was meant to be private to the tailnet, but only DNS made it
 so. Traefik listens on the PC's Wi-Fi address too (192.168.101.112:443), and routes by host
@@ -247,17 +243,22 @@ allowing only Tailscale's ranges (`100.64.0.0/10`, `fd7a:115c:a1e0::/48`). It's 
 HTTPS ingress and to the HTTP→HTTPS redirect. For this to work, Traefik must see the real client
 IP (HOMELAB-SEC-002).
 
-**How it was verified:** not yet released, because Traefik still sees an internal address for
-every client (HOMELAB-SEC-002), so the allow-list would refuse everyone. Once released, check from
-a phone on the Wi-Fi with Tailscale off that the production URL (and the LAN IP with that Host
-header) returns 403, and with Tailscale on that TiDo loads and sign-in works.
+**How it was verified (release 18faf73ce798, 2026-10-29):** sending the production host name to
+each of the PC's addresses gave:
+
+- Tailscale address `100.85.196.89`: 200 (HTTPS), 301 (HTTP to HTTPS), 401 (API, signed out).
+- Wi-Fi address `192.168.101.112`: 403 on all three.
+- `127.0.0.1`: 403. On the PC itself, use the `ts.net` name, which MagicDNS resolves to the
+  Tailscale address.
+
+A check from a phone (Tailscale off: 403; on: TiDo loads) confirms it from outside the PC.
 
 **Lesson:** a hostname isn't access control. "Private" has to be enforced where traffic
 arrives: firewall, listener address or allow-list.
 
 ### TIDO-SEC-002: The API sees each client's real IP
 
-_2026-10-29 · Medium · Partly fixed: waiting on HOMELAB-SEC-002_
+_2026-10-29 · Medium · Fixed (with HOMELAB-SEC-002)_
 
 **What was wrong:** K3s's ServiceLB, the proxy in front of Traefik, rewrites every request's
 source address to its own pod address (`10.42.0.x`). The API trusted every proxy hop
@@ -274,21 +275,22 @@ source address to its own pod address (`10.42.0.x`). The API trusted every proxy
 
 **Fix:**
 
-- Done: `TRUST_PROXY` accepts a hop count (`apps/api/src/config.ts`), and Kubernetes sets `'1'`,
+- `TRUST_PROXY` accepts a hop count (`apps/api/src/config.ts`), and Kubernetes sets `'1'`,
   so only Traefik is trusted and `request.ip` is the address Traefik saw. A forged
   `X-Forwarded-For` can no longer choose the IP.
-- Pending: Traefik must receive the real address (HOMELAB-SEC-002).
+- Traefik receives the real address: it binds ports 80/443 itself, with no ServiceLB proxy
+  in front (HOMELAB-SEC-002).
 
-**How it was verified:** unit tests cover the `TRUST_PROXY` forms. On staging,
-`audit_events.ip_address` for failed sign-ins is still `10.42.0.125`, the ServiceLB pod. That is
-exactly the problem HOMELAB-SEC-002 fixes.
+**How it was verified (staging, 2026-10-29):** unit tests cover the `TRUST_PROXY` forms. Before
+the Traefik change, every failed sign-in recorded `10.42.0.125` (the ServiceLB pod). After it, the
+same requests recorded `100.85.196.89` over Tailscale and `192.168.101.112` over the LAN.
 
 **Lesson:** per-IP controls (rate limits, audit, allow-lists) are only as good as the IP. Check
 what IP the app actually sees, and trust exactly as many proxies as you have.
 
 ### TIDO-SEC-001: The development database is no longer exposed to the network
 
-_2026-10-29 · High · Fixed in the repo; the running container needs recreating_
+_2026-10-29 · High · Fixed_
 
 **What was wrong:** `deploy/compose/docker-compose.yml` published PostgreSQL as `5432:5432`,
 which means every network interface. The PC's firewall (ufw) didn't help: Docker writes its own
@@ -303,9 +305,10 @@ existing machine, run
 `docker compose -f deploy/compose/docker-compose.yml up -d`, which recreates the container and
 keeps the data volume.
 
-**How it was verified:** found with `ss -tln`, which showed `0.0.0.0:5432`, and
-`docker ps`, which showed `0.0.0.0:5432->5432/tcp`. After recreating the container, `ss -tln`
-should show 5432 only on `127.0.0.1`.
+**How it was verified (2026-10-29):** found with `ss -tln` (`0.0.0.0:5432`) and `docker ps`
+(`0.0.0.0:5432->5432/tcp`). After `docker compose … up -d`, `docker ps` shows
+`127.0.0.1:5432->5432/tcp`, `ss -tln` shows `127.0.0.1:5432` only, and the data volume (with
+its users) is intact.
 
 **Lesson:** Docker-published ports bypass ufw. Always bind development services to `127.0.0.1`,
 and check with `ss -tln` what is actually listening on `0.0.0.0`.
