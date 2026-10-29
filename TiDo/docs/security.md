@@ -92,10 +92,20 @@ Tailscale name and certificate on Traefik's new `staging` entry point (HOMELAB-S
 
 **How it was verified:** `kubectl kustomize` of the production overlay renders the same
 resources as before, apart from one added `app.kubernetes.io/part-of` label on the middleware.
-The staging overlay renders the new host, port, cookie name and middleware. Checks against the
-running release are to be recorded at the first release on port 8443: Tailscale address 200,
-Wi-Fi address 403, a phone with Tailscale on loads staging, and signing in to staging leaves
-production signed in.
+The staging overlay renders the new host, port, cookie name and middleware. Against release
+86c21fe2b9db on staging (2026-10-30), sending the host name to each of the PC's addresses gave:
+
+- Tailscale address, port 8443: 200 (page) and 401 (API, signed out), with the Let's Encrypt
+  certificate verified (no `-k`).
+- Wi-Fi address `192.168.101.112`, port 8443: 403 on both. `127.0.0.1`: 403.
+- Production on 443 is unchanged: 200 over Tailscale, 403 from the Wi-Fi, still release
+  18faf73ce798.
+- `tido-staging.home.arpa` now gets 404 on every address: no route is left on that name.
+- A sign-in POST carrying the old origin (`https://tido-staging.home.arpa`) gets 403 from the
+  CSRF check, and the new origin gets past it (400, for the empty body).
+
+Still to confirm by hand: staging loads on a phone with Tailscale on, the phone gets 403 with
+Tailscale off, and signing in to staging leaves production signed in in the same browser.
 
 **Lesson:** "only this machine can reach it" was true of the name, not of the service. Give every
 environment the same access control as production, even a test one. And sharing a host name
