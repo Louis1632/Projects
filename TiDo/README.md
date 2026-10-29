@@ -61,11 +61,12 @@ Be careful in production: there are no backups yet (`docs/runbooks/production-ga
 
 **Infrastructure**
 
-| What           | Where                                                                   |
-| -------------- | ----------------------------------------------------------------------- |
-| Image registry | http://localhost:5000/v2/_catalog (Docker container `tido-registry`)    |
-| Pods           | `kubectl get pods -n tido-staging` / `-n tido-production`, or Portainer |
-| Runbooks       | `docs/runbooks/` (releases, production, backups, observability)         |
+| What           | Where                                                                              |
+| -------------- | ---------------------------------------------------------------------------------- |
+| Image registry | http://localhost:5000/v2/_catalog (Docker container `tido-registry`)               |
+| Pods           | `kubectl get pods -n tido-staging` / `-n tido-production`, or Portainer            |
+| Runbooks       | `docs/runbooks/` (releases, production, backups, observability)                    |
+| New PC         | Rebuild everything from the repos: homelab-platform `docs/rebuild-from-scratch.md` |
 
 It is a modular TypeScript monolith:
 

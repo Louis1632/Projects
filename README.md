@@ -13,5 +13,6 @@
 | Grafana      | https://grafana.home.arpa                                     |
 | Portainer    | https://localhost:30779                                       |
 
-The shared monitoring stack lives in the private
-[Louis1632/homelab-platform](https://github.com/Louis1632/homelab-platform) repo.
+The shared monitoring stack (and its dashboards, as code) lives in the private
+[Louis1632/homelab-platform](https://github.com/Louis1632/homelab-platform) repo. To rebuild
+everything on a new PC, follow its `docs/rebuild-from-scratch.md`.

@@ -65,9 +65,11 @@ kill %1
 
 ### The TiDo dashboard
 
-Grafana → Dashboards → New. Add a variable first: Settings → Variables → Query, name
-`namespace`, query `label_values(up{job="tido-api"}, namespace)`. Then one panel per query
-(`$__rate_interval` lets Grafana pick a safe window for the zoom level):
+**TiDo Overview** (https://grafana.home.arpa/d/ad6s2fv, folder _TiDo_) is kept as code in
+homelab-platform: `observability/dashboards/TiDo/tido-overview.json`. Edit it in Grafana and
+run `scripts/dashboards.py pull` there, or edit the JSON and `push` (homelab-platform
+`docs/dashboards.md`). The queries below are what its panels are built from, as a reference for
+new panels (`$__rate_interval` lets Grafana pick a safe window for the zoom level):
 
 | Panel (visualisation)       | Query                                                                                                                                                                                                                                           |
 | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
