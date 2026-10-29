@@ -166,7 +166,7 @@ describe('subtasks', () => {
       context.db.execute(
         sql`UPDATE tasks SET parent_task_id = ${child.body.id} WHERE id = ${parent.body.id}`,
       ),
-    ).rejects.toThrow(/subtask/);
+    ).rejects.toMatchObject({ cause: { message: expect.stringMatching(/subtask/) } });
   });
 
   it('completes subtasks independently of the parent', async () => {

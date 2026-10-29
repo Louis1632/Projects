@@ -72,7 +72,7 @@ test('owner completes setup and organises tasks', async ({ page }) => {
 test('owner invites a member who co-edits shared tasks', async ({ page, browser }) => {
   await signIn(page, 'owner@example.test', OWNER_PASSWORD);
   await page.getByRole('link', { name: /People/ }).click();
-  await page.getByLabel('Name').fill('Sam');
+  await page.getByLabel('Name', { exact: true }).fill('Sam');
   await page.getByLabel('Email').fill('sam@example.test');
   await page.getByRole('button', { name: 'Create invite' }).click();
   const inviteUrl = (await page.locator('.invite-result code').textContent())!;

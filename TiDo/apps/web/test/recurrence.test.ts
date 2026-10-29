@@ -59,6 +59,8 @@ describe('draftToRule', () => {
 describe('describe and preview', () => {
   it('summarises rules in words and previews upcoming dates', () => {
     expect(describeRule('FREQ=WEEKLY;BYDAY=MO,FR', anchor)).toBe('every week on Monday, Friday');
+    expect(describeRule('FREQ=MONTHLY;BYMONTHDAY=-1', anchor)).toBe('every month on the last day');
+    expect(describeRule('FREQ=MONTHLY;BYDAY=-1FR', anchor)).toBe('every month on the last Friday');
     expect(previewDates('FREQ=MONTHLY;BYMONTHDAY=-1', anchor, 3)).toEqual([
       '2026-01-31',
       '2026-02-28',

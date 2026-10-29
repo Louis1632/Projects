@@ -173,7 +173,9 @@ export function presetLabel(preset: Preset, anchor: string): string {
 /** Human-readable summary such as "every 2 weeks on Monday, Friday". */
 export function describeRule(rule: string, startsOn: string): string {
   try {
-    return new RRule({ ...RRule.parseString(rule), dtstart: parseDay(startsOn) }).toText();
+    const text = new RRule({ ...RRule.parseString(rule), dtstart: parseDay(startsOn) }).toText();
+    // rrule renders BYMONTHDAY=-1 as "on the last"; finish the phrase.
+    return text.replace(/on the last(?= |$)(?! \w+day)/, 'on the last day');
   } catch {
     return rule;
   }

@@ -172,7 +172,10 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
   app.get(
     '/auth/tokens/:token',
     {
-      config: { public: true, rateLimit: { max: 30, timeWindow: '1 minute' } },
+      config: {
+        public: true,
+        rateLimit: { max: app.config.loginRateLimitMax * 3, timeWindow: '1 minute' },
+      },
       schema: { params: tokenLookupSchema, response: { 200: tokenInfoSchema } },
     },
     async (request) => {
@@ -185,7 +188,10 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
   app.post(
     '/auth/tokens/accept',
     {
-      config: { public: true, rateLimit: { max: 10, timeWindow: '1 minute' } },
+      config: {
+        public: true,
+        rateLimit: { max: app.config.loginRateLimitMax, timeWindow: '1 minute' },
+      },
       schema: { body: tokenAcceptSchema, response: { 200: sessionUserSchema } },
     },
     async (request, reply) => {

@@ -53,32 +53,33 @@ export function CalendarPage() {
           <h1>Calendar</h1>
           <p>Recurring tasks appear on every date they repeat.</p>
         </div>
-        <div className="filters">
-          <label>
-            List
-            <select value={projectId} onChange={(event) => setProjectId(event.target.value)}>
-              <option value="all">All lists</option>
-              {dashboard.projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
+      </div>
+
+      <div className="filters" role="group" aria-label="Filters">
+        <label>
+          List
+          <select value={projectId} onChange={(event) => setProjectId(event.target.value)}>
+            <option value="all">All lists</option>
+            {dashboard.projects.map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Assigned
+          <select value={assigneeId} onChange={(event) => setAssigneeId(event.target.value)}>
+            <option value="all">Everyone</option>
+            {dashboard.members
+              .filter((member) => member.active)
+              .map((member) => (
+                <option key={member.id} value={member.id}>
+                  {member.displayName}
                 </option>
               ))}
-            </select>
-          </label>
-          <label>
-            Assigned
-            <select value={assigneeId} onChange={(event) => setAssigneeId(event.target.value)}>
-              <option value="all">Everyone</option>
-              {dashboard.members
-                .filter((member) => member.active)
-                .map((member) => (
-                  <option key={member.id} value={member.id}>
-                    {member.displayName}
-                  </option>
-                ))}
-            </select>
-          </label>
-        </div>
+          </select>
+        </label>
       </div>
 
       <div className="calendar-layout">
