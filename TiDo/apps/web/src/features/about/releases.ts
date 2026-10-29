@@ -16,6 +16,24 @@ export interface Release {
 
 export const releases: Release[] = [
   {
+    version: '0.3.0',
+    date: '2026-10-30',
+    summary: 'Name your sections, add subtasks in place, and a tidier board.',
+    changes: [
+      { kind: 'new', text: 'Rename any section, including the first one, by clicking its name.' },
+      { kind: 'new', text: 'Add a subtask straight from a task with “+ Subtask”.' },
+      { kind: 'improved', text: 'Add a section with the + after the last column.' },
+      {
+        kind: 'improved',
+        text: 'Archive a list from the archive button next to its name in the sidebar.',
+      },
+      {
+        kind: 'improved',
+        text: 'Section names are centred, and subtasks are separated by lines.',
+      },
+    ],
+  },
+  {
     version: '0.2.0',
     date: '2026-10-29',
     summary: 'Sections of a list now sit side by side as columns you can rearrange.',

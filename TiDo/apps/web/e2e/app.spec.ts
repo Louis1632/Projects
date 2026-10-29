@@ -63,19 +63,29 @@ test('owner completes setup and organises tasks', async ({ page }) => {
   await row.getByRole('button', { name: 'Complete Clean the garage' }).click();
   await expect(row).toHaveClass(/completed/);
 
-  // Sections are columns: drag a task into a new one, then drag that column to the front.
-  await page.getByPlaceholder('New section name').fill('Later');
+  // Sections are columns: add one with the + tile, drag a task into it, then drag that column
+  // to the front by its grip.
   await page.getByRole('button', { name: 'Add section' }).click();
+  await page.getByLabel('New section name').fill('Later');
+  await page.getByLabel('New section name').press('Enter');
   const later = page.getByRole('region', { name: 'House – Later' });
   await expect(later).toBeVisible();
   await row.dragTo(later);
   await expect(later.getByText('Clean the garage')).toBeVisible();
-  await later
-    .getByText('Later', { exact: true })
-    .dragTo(page.getByRole('region', { name: 'House – Tasks' }));
+  await later.locator('.drag-grip').dragTo(page.getByRole('region', { name: 'House – Tasks' }));
   await expect(page.getByRole('region', { name: /^House – / }).first()).toHaveAccessibleName(
     'House – Later',
   );
+
+  // The first section can be renamed, and subtasks added without opening the task.
+  await page.getByRole('button', { name: 'Rename section Tasks' }).click();
+  await page.getByLabel('Section name').fill('This week');
+  await page.getByLabel('Section name').press('Enter');
+  await expect(page.getByRole('region', { name: 'House – This week' })).toBeVisible();
+  await row.getByRole('button', { name: 'Add a subtask to Clean the garage' }).click();
+  await row.getByLabel('New subtask for Clean the garage').fill('Recycle old paint');
+  await row.getByLabel('New subtask for Clean the garage').press('Enter');
+  await expect(row.getByText('Recycle old paint')).toBeVisible();
 
   // The one-time setup link cannot be reused.
   await page.context().clearCookies();

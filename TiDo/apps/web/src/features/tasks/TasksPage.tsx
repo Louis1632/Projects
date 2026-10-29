@@ -1,22 +1,23 @@
-import { useState, type DragEvent, type FormEvent } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useState, type DragEvent } from 'react';
+import { useParams } from 'react-router';
 import type { Section, SectionWithTasks, Subtask, Task } from '@tido/contracts';
 import { api } from '../../lib/api';
 import { useDashboard, useWorkspaceMutation } from '../../lib/queries';
 import { useShell } from '../layout/AppShell';
 import { defaultFilters, filtersActive, taskMatches, type TaskFilters } from './filters';
 import { priorityLabels, statusLabels } from './labels';
+import { AddSection, SectionName } from './SectionControls';
 import { TaskRow } from './TaskRow';
 
 type Dragged = { kind: 'section'; section: Section } | { kind: 'task'; task: Task };
 
 export function TasksPage() {
   const { projectId } = useParams();
-  const navigate = useNavigate();
   const { today, search, openEditor, notify } = useShell();
   const dashboard = useDashboard().data!;
   const [filters, setFilters] = useState<TaskFilters>(defaultFilters);
-  const [newSection, setNewSection] = useState('');
+  // A section being renamed cannot be dragged, so its name field behaves like any other.
+  const [renaming, setRenaming] = useState<string | null>(null);
   const [dragged, setDragged] = useState<Dragged | null>(null);
   // The section or task id the dragged item would land on, for the drop highlight.
   const [dropTarget, setDropTarget] = useState<string | null>(null);
@@ -40,8 +41,16 @@ export function TasksPage() {
   const addSection = useWorkspaceMutation((input: { projectId: string; name: string }) =>
     api.createSection(input.projectId, input.name),
   );
-  const archiveList = useWorkspaceMutation((input: { id: string; revision: number }) =>
-    api.updateProject(input.id, { archived: true, revision: input.revision }),
+  const renameSection = useWorkspaceMutation((input: { section: Section; name: string }) =>
+    api.updateSection(input.section.id, { name: input.name, revision: input.section.revision }),
+  );
+  const addSubtask = useWorkspaceMutation((input: { task: Task; title: string }) =>
+    api.createTask({
+      sectionId: input.task.sectionId,
+      parentTaskId: input.task.id,
+      title: input.title,
+      repeatSubtask: !!input.task.recurrence,
+    }),
   );
 
   const run = (promise: Promise<unknown>) =>
@@ -64,16 +73,6 @@ export function TasksPage() {
     setFilters((current) => ({ ...current, [key]: value }));
   const activeMembers = dashboard.members.filter((member) => member.active);
   const single = projectId ? projects[0] : undefined;
-
-  const submitSection = (event: FormEvent) => {
-    event.preventDefault();
-    if (!single || !newSection.trim()) return;
-    void run(
-      addSection
-        .mutateAsync({ projectId: single.id, name: newSection.trim() })
-        .then(() => setNewSection('')),
-    );
-  };
 
   const startDrag = (event: DragEvent<HTMLElement>, item: Dragged, image?: Element | null) => {
     event.stopPropagation();
@@ -138,22 +137,6 @@ export function TasksPage() {
           <h1>{single ? single.name : 'All tasks'}</h1>
           <p>Keep the household moving, together.</p>
         </div>
-        {single && (
-          <button
-            className="text-button danger"
-            onClick={() => {
-              if (window.confirm(`Archive "${single.name}"? Its tasks are kept but hidden.`)) {
-                void run(
-                  archiveList
-                    .mutateAsync({ id: single.id, revision: single.revision })
-                    .then(() => navigate('/tasks')),
-                );
-              }
-            }}
-          >
-            Archive list
-          </button>
-        )}
       </div>
 
       <div className="filters" role="group" aria-label="Filters">
@@ -281,7 +264,7 @@ export function TasksPage() {
                   >
                     <div
                       className="section-heading"
-                      draggable
+                      draggable={renaming !== section.id}
                       title="Drag to move this section"
                       onDragStart={(event) =>
                         startDrag(
@@ -295,7 +278,11 @@ export function TasksPage() {
                       <span className="drag-grip" aria-hidden="true">
                         ⠿
                       </span>
-                      <h3>{section.name}</h3>
+                      <SectionName
+                        name={section.name}
+                        onRename={(name) => run(renameSection.mutateAsync({ section, name }))}
+                        onEditingChange={(editing) => setRenaming(editing ? section.id : null)}
+                      />
                       <span className="row-actions">
                         <button
                           className="icon-button small"
@@ -323,6 +310,9 @@ export function TasksPage() {
                         today={today}
                         onEdit={(item) => openEditor({ mode: 'edit', task: item })}
                         onToggle={(item) => void run(toggle.mutateAsync(item))}
+                        onAddSubtask={(item, title) =>
+                          run(addSubtask.mutateAsync({ task: item, title }))
+                        }
                         onMove={(item, direction) => {
                           const index = section.tasks.findIndex(
                             (candidate) => candidate.id === item.id,
@@ -371,24 +361,10 @@ export function TasksPage() {
                   </section>
                 );
               })}
+              <AddSection
+                onAdd={(name) => run(addSection.mutateAsync({ projectId: project.id, name }))}
+              />
             </div>
-            {single && (
-              <form className="inline-form" onSubmit={submitSection}>
-                <label className="sr-only" htmlFor="new-section">
-                  New section name
-                </label>
-                <input
-                  id="new-section"
-                  value={newSection}
-                  onChange={(event) => setNewSection(event.target.value)}
-                  placeholder="New section name"
-                  maxLength={120}
-                />
-                <button className="secondary-button" disabled={!newSection.trim()}>
-                  Add section
-                </button>
-              </form>
-            )}
           </div>
         ))}
       </div>

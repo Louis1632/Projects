@@ -1,4 +1,4 @@
-import type { CSSProperties, HTMLAttributes } from 'react';
+import { useState, type CSSProperties, type FormEvent, type HTMLAttributes } from 'react';
 import type { Member, Subtask, Task } from '@tido/contracts';
 import { prettyDay } from '../../lib/dates';
 import { describeRule } from '../../lib/recurrence';
@@ -11,6 +11,8 @@ interface TaskRowProps {
   onEdit: (task: Task | Subtask) => void;
   onToggle: (task: Task | Subtask) => void;
   onMove?: (task: Task, direction: -1 | 1) => void;
+  /** Adds a subtask straight from the row, without opening the editor. */
+  onAddSubtask?: (task: Task, title: string) => Promise<unknown>;
   showSection?: string;
   /** Drag-and-drop handlers, for views where rows can be dragged around. */
   dragProps?: HTMLAttributes<HTMLElement>;
@@ -26,6 +28,7 @@ export function TaskRow({
   onEdit,
   onToggle,
   onMove,
+  onAddSubtask,
   showSection,
   dragProps,
   dragging,
@@ -124,6 +127,54 @@ export function TaskRow({
           ))}
         </ul>
       )}
+      {onAddSubtask && <AddSubtask task={task} onAdd={onAddSubtask} />}
     </article>
+  );
+}
+
+function AddSubtask({
+  task,
+  onAdd,
+}: {
+  task: Task;
+  onAdd: (task: Task, title: string) => Promise<unknown>;
+}) {
+  const [title, setTitle] = useState<string | null>(null);
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    const value = title?.trim();
+    if (!value) return;
+    // The field stays open so several subtasks can be added in a row.
+    void onAdd(task, value).then(() => setTitle(''));
+  };
+
+  if (title === null) {
+    return (
+      <button
+        className="text-button small add-subtask"
+        aria-label={`Add a subtask to ${task.title}`}
+        onClick={() => setTitle('')}
+      >
+        + Subtask
+      </button>
+    );
+  }
+  return (
+    <form className="add-subtask-form" onSubmit={submit}>
+      <input
+        autoFocus
+        aria-label={`New subtask for ${task.title}`}
+        placeholder="Subtask, then Enter"
+        value={title}
+        maxLength={500}
+        onChange={(event) => setTitle(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') setTitle(null);
+        }}
+        onBlur={() => {
+          if (!title.trim()) setTitle(null);
+        }}
+      />
+    </form>
   );
 }
