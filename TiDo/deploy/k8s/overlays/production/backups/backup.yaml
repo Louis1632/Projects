@@ -1,0 +1,115 @@
+# Nightly logical backup of the production database onto the USB backup drive.
+# deploy/scripts/prod-host-setup.sh mounts the drive at /srv/tido-backups and creates
+# production/ with a marker file. If the drive is missing, the job fails instead of
+# quietly writing to the internal disk.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: tido-production-backups
+  labels:
+    tido.io/phase: platform
+spec:
+  # Nominal: a local volume is not size-limited; the drive's free space is the real limit.
+  capacity:
+    storage: 100Gi
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ''
+  claimRef:
+    namespace: tido-production
+    name: tido-backups
+  local:
+    path: /srv/tido-backups/production
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: node-role.kubernetes.io/control-plane
+              operator: Exists
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tido-backups
+  labels:
+    tido.io/phase: platform
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: ''
+  volumeName: tido-production-backups
+  resources:
+    requests:
+      storage: 100Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: tido-backup
+  labels:
+    tido.io/phase: app
+spec:
+  schedule: '30 2 * * *'
+  timeZone: Africa/Johannesburg
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: tido-backup
+            app.kubernetes.io/part-of: tido
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          enableServiceLinks: false
+          securityContext:
+            runAsNonRoot: true
+            # The postgres user in the CloudNativePG image; owns production/ on the drive.
+            runAsUser: 26
+            runAsGroup: 26
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: backup
+              image: ghcr.io/cloudnative-pg/postgresql:17
+              command: ['/bin/bash', '-c']
+              args:
+                - |
+                  set -euo pipefail
+                  [[ -f /backups/.tido-backup-drive ]] || { echo "backup drive is not mounted at /srv/tido-backups"; exit 1; }
+                  name="tido-$(date -u +%Y%m%dT%H%M%SZ).dump"
+                  pg_dump --format=custom --dbname="$DATABASE_URL" --file="/backups/${name}.partial"
+                  # A dump pg_restore cannot list is not kept.
+                  pg_restore --list "/backups/${name}.partial" >/dev/null
+                  mv "/backups/${name}.partial" "/backups/${name}"
+                  rm -f /backups/*.partial
+                  # Keep the newest 30 nightly dumps.
+                  ls -1t /backups/tido-*.dump | tail -n +31 | xargs -r rm --
+                  echo "Wrote ${name} ($(du -h "/backups/${name}" | cut -f1)); $(ls /backups/tido-*.dump | wc -l) dumps kept."
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: tido-db-app
+                      key: uri
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  memory: 256Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ['ALL']
+              volumeMounts:
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: backups
+              persistentVolumeClaim:
+                claimName: tido-backups

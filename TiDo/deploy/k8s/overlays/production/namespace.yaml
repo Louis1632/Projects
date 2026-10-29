@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tido-production
+  labels:
+    app.kubernetes.io/part-of: tido
+    tido.io/environment: production
+    tido.io/phase: platform
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted

@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: tido-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tido
+      POSTGRES_USER: tido
+      POSTGRES_PASSWORD: tido
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U tido -d tido']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - tido-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  tido-postgres-data:

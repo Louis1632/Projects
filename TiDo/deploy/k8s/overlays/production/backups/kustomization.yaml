@@ -1,0 +1,6 @@
+# Nightly backups to the USB backup drive. Enable by listing this component in
+# ../kustomization.yaml once deploy/scripts/prod-host-setup.sh has mounted the drive.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+resources:
+  - backup.yaml

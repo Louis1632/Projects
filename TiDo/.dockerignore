@@ -1,0 +1,14 @@
+**/node_modules
+**/dist
+**/coverage
+**/.vite
+**/playwright-report
+**/test-results
+apps/web/e2e/.state
+.env
+.env.*
+!.env.example
+deploy/k8s
+docs
+*.log
+.git

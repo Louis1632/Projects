@@ -1,0 +1,38 @@
+# Production: reachable only over Tailscale, with a trusted certificate for this machine's
+# Tailscale name.
+# Released with deploy/scripts/release-production.sh, which promotes the image digests
+# already running on staging and writes the hostname below. See
+# docs/runbooks/production-release.md and docs/runbooks/production-gates.md.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: tido-production
+resources:
+  - namespace.yaml
+  - ../../base
+  - redirect.yaml
+# Backups are OFF (no backup drive yet; see docs/runbooks/production-gates.md). To turn on
+# nightly backups to the USB drive, run deploy/scripts/prod-host-setup.sh with the drive's
+# partition, then uncomment these two lines and release again.
+# components:
+#   - backups
+patches:
+  - target:
+      kind: Ingress
+      name: tido
+    path: ingress-patch.yaml
+  - path: config-patch.yaml
+  - target:
+      kind: Cluster
+      name: tido-db
+    patch: |-
+      - op: replace
+        path: /spec/storage/size
+        value: 20Gi
+# Written by deploy/scripts/release-production.sh: the digests promoted from staging.
+images:
+  - name: tido-api
+    newName: localhost:5000/tido/api
+    digest: sha256:ef8ada34dfecf208d36224522b0626d3318bde33ae3ee388c6f94644b7df90f4
+  - name: tido-web
+    newName: localhost:5000/tido/web
+    digest: sha256:e7db886fd5a5dc244dfdacc01877d7e0a904e4ab9972ed17ad53c30a3f88fed6
