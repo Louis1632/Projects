@@ -10,7 +10,7 @@ sudo bash deploy/scripts/host-setup.sh
 It is idempotent and does four things:
 
 1. Installs Docker Engine, Buildx and Compose from `download.docker.com`.
-2. Adds you to the `docker` group (log out and in again, or the release scripts fall back to `sg docker`).
+2. Adds you to the `docker` group. Log out and back in (or reboot) before using Docker without sudo.
 3. Writes `/etc/rancher/k3s/registries.yaml` so K3s's containerd can pull from the staging
    registry at `http://localhost:5000`, then restarts K3s. K3s only reads this file at start-up,
    so any later change also needs `sudo systemctl restart k3s`.

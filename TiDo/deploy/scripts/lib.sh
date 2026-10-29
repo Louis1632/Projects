@@ -11,12 +11,11 @@ step() { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
 fail() { printf '\033[1;31mERROR:\033[0m %s\n' "$*" >&2; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || fail "$1 is required"; }
 
-# Runs docker directly, or through `sg docker` when the group membership from
-# host-setup.sh has not reached this login session yet.
+# Runs docker, explaining the fix when the docker group (added by host-setup.sh)
+# has not reached this login session yet.
 docker_cmd() {
-  if docker info >/dev/null 2>&1; then
-    docker "$@"
-  else
-    sg docker -c "$(printf '%q ' docker "$@")"
+  if ! docker info >/dev/null 2>&1; then
+    fail "cannot reach Docker. If host-setup.sh just added you to the docker group, log out and back in (or reboot) first."
   fi
+  docker "$@"
 }

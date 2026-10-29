@@ -46,7 +46,7 @@ systemctl enable --now docker
 if [[ -n "$TARGET_USER" ]]; then
   step "Adding ${TARGET_USER} to the docker group"
   usermod -aG docker "$TARGET_USER"
-  echo "Log out and back in (or run 'newgrp docker') for this to take effect."
+  echo "Log out and back in (or reboot) for this to take effect."
 fi
 
 step "Configuring K3s to pull from the staging registry at ${REGISTRY_HOST}"
