@@ -94,7 +94,8 @@ export const api = {
       method: 'POST',
       json: { currentPassword, newPassword },
     }),
-  tokenInfo: (token: string) => request<TokenInfo>(`/auth/tokens/${encodeURIComponent(token)}`),
+  tokenInfo: (token: string) =>
+    request<TokenInfo>('/auth/tokens/lookup', { method: 'POST', json: { token } }),
   acceptToken: (input: TokenAcceptInput) =>
     request<SessionUser>('/auth/tokens/accept', { method: 'POST', json: input }),
 

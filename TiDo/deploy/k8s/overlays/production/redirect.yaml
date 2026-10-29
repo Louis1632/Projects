@@ -18,8 +18,8 @@ metadata:
     tido.io/phase: platform
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web
-    # <namespace>-<middleware>@kubernetescrd
-    traefik.ingress.kubernetes.io/router.middlewares: tido-production-redirect-https@kubernetescrd
+    # <namespace>-<middleware>@kubernetescrd; the tailnet check runs first.
+    traefik.ingress.kubernetes.io/router.middlewares: tido-production-tailnet-only@kubernetescrd,tido-production-redirect-https@kubernetescrd
 spec:
   ingressClassName: traefik
   rules:

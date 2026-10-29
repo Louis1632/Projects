@@ -132,6 +132,15 @@ describe('sessions', () => {
     expect((await owner.get('/auth/me')).status).toBe(200);
     expect((await laptop.get('/auth/me')).status).toBe(401);
   });
+
+  it('stops guessing the current password after repeated failures', async () => {
+    const { owner } = await setupOwner(context);
+    const attempt = (currentPassword: string) =>
+      owner.post('/auth/password', { currentPassword, newPassword: 'a brand new passphrase' });
+    for (let i = 0; i < 10; i++) expect((await attempt(`guess number ${i}`)).status).toBe(400);
+    // Blocked even with the right password, so a guesser learns nothing more.
+    expect((await attempt(PASSWORD)).status).toBe(429);
+  });
 });
 
 describe('CSRF and origin protection', () => {
@@ -175,7 +184,7 @@ describe('owner-managed accounts', () => {
 
     const token = tokenFrom(invite.body.link.url);
     const anonymous = new Client(context.app);
-    expect((await anonymous.get(`/auth/tokens/${token}`)).body).toMatchObject({
+    expect((await anonymous.post('/auth/tokens/lookup', { token })).body).toMatchObject({
       kind: 'invite',
       email: 'sam@example.test',
     });

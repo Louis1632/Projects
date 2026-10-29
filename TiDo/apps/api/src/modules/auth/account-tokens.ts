@@ -28,7 +28,7 @@ export async function issueAccountLink(
   await exec.insert(accountTokens).values({
     userId: options.userId,
     kind: options.kind,
-    tokenHash: hashToken(token, options.secret),
+    tokenHash: hashToken(token, options.secret, 'account-link'),
     createdBy: options.createdBy,
     expiresAt,
   });
@@ -52,7 +52,7 @@ export async function findUsableToken(exec: Executor, secret: string, token: str
     .innerJoin(users, eq(users.id, accountTokens.userId))
     .where(
       and(
-        eq(accountTokens.tokenHash, hashToken(token, secret)),
+        eq(accountTokens.tokenHash, hashToken(token, secret, 'account-link')),
         isNull(accountTokens.usedAt),
         isNull(accountTokens.revokedAt),
         gt(accountTokens.expiresAt, new Date()),

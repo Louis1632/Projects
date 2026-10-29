@@ -82,3 +82,79 @@ spec:
           port: 8000
         - protocol: TCP
           port: 5432
+---
+# Egress: TiDo's own pods may reach only what they need, so a compromised container cannot call
+# out to the internet or probe other namespaces. The database pods are left alone (the operator
+# manages them). See docs/security.md (TIDO-SEC-007).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: tido-egress-dns
+  labels:
+    tido.io/phase: platform
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: In
+        values: [tido-api, tido-web, tido-migrate, tido-bootstrap, tido-backup]
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: tido-egress-database
+  labels:
+    tido.io/phase: platform
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: In
+        values: [tido-api, tido-migrate, tido-bootstrap, tido-backup]
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              cnpg.io/cluster: tido-db
+      ports:
+        - protocol: TCP
+          port: 5432
+---
+# Traces go to the Alloy agent in the shared monitoring stack (Louis1632/homelab-platform).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: tido-api-egress-traces
+  labels:
+    tido.io/phase: platform
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: tido-api
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: alloy
+      ports:
+        - protocol: TCP
+          port: 4318

@@ -70,7 +70,7 @@ export async function bootstrapOwner(
     await tx.insert(schema.accountTokens).values({
       userId: user!.id,
       kind: user!.passwordHash ? 'password_reset' : 'invite',
-      tokenHash: hashToken(token, options.tokenSecret),
+      tokenHash: hashToken(token, options.tokenSecret, 'account-link'),
       expiresAt,
     });
 
