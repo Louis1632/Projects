@@ -14,3 +14,4 @@ data:
   WORKSPACE_TIMEZONE: Africa/Johannesburg
   LOG_LEVEL: info
   METRICS_PORT: '9464'
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo.monitoring.svc:4318

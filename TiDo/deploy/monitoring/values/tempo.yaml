@@ -1,0 +1,29 @@
+# Grafana Tempo, single binary: stores traces on a local-path volume for 3 days.
+# Installed as release `tempo` in namespace `monitoring`; see docs/runbooks/observability.md.
+# The TiDo API sends OTLP over HTTP to http://tempo.monitoring.svc:4318.
+tempo:
+  retention: 72h
+  reportingEnabled: false
+  # TiDo sends OTLP. The chart's default Jaeger receiver stays on: its service template
+  # requires it, and the unused ports do no harm.
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+
+persistence:
+  enabled: true
+  storageClassName: local-path
+  size: 10Gi
+
+serviceMonitor:
+  enabled: true

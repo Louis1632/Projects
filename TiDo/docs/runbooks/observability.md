@@ -1,4 +1,4 @@
-# Observability: metrics, logs and alerts
+# Observability: metrics, logs, traces and alerts
 
 A free, self-hosted stack on the staging K3s host, set up by hand one phase at a time so you
 learn what each part does. Run every command from the repository root.
@@ -9,6 +9,8 @@ PostgreSQL (CNPG) :9187 ───┼──► Prometheus ──► Alertmanager
 Traefik :9100 ─────────────┤        │
 node, kubelet, kube-state ─┘        ▼
                                  Grafana ◄── Loki ◄── Alloy ◄── every pod's stdout
+                                    ▲
+TiDo API ──OTLP traces :4318──► Tempo
 ```
 
 | Piece              | Job                                                        | Comparable to       |
@@ -18,6 +20,7 @@ node, kubelet, kube-state ─┘        ▼
 | Grafana            | Dashboards, log search and alert views over all of it      | Kibana              |
 | Loki               | Stores logs, indexed only by labels (cheap on one machine) | Elasticsearch       |
 | Alloy              | Collects logs from pods and pushes them to Loki            | Filebeat / Logstash |
+| Tempo              | Stores traces: each request as a tree of timed steps       | Jaeger / APM        |
 | node-exporter      | Host CPU, memory, disk, network                            |                     |
 | kube-state-metrics | Kubernetes objects: restarts, replicas, pod phases         |                     |
 
@@ -30,8 +33,10 @@ Files:
 | `deploy/monitoring/k8s/tido-alerts.yaml`         | TiDo alert rules                                   |
 | `deploy/k8s/base/network-policy-monitoring.yaml` | Lets `monitoring` through TiDo's default-deny      |
 | `apps/api/src/plugins/metrics.ts`                | The API's request histogram and `/metrics` server  |
+| `apps/api/src/telemetry.ts`                      | The API's tracing: request, handler and SQL spans  |
 
-Expect about 2–2.5 GB of RAM and 22 GB of disk (Prometheus 10, Loki 10, Grafana 2) in total.
+Expect about 2.5–3 GB of RAM and 32 GB of disk (Prometheus, Loki and Tempo 10 each, Grafana 2)
+in total.
 
 ## Phase 0: tools and access
 
@@ -265,25 +270,81 @@ Break things on purpose and find the cause using only the dashboards and Explore
 
 For each one, write down which panel told you first. That becomes your troubleshooting order.
 
-## Phase 6: traces (next)
+## Phase 6: traces with Tempo
 
-Tracing shows one request as a tree of timed steps (HTTP handler → each SQL query). This adds
-**Tempo** (`grafana-community/tempo`) and the OpenTelemetry SDK to the API. Drizzle already
-emits query spans through `@opentelemetry/api`, now a dependency of `@tido/db`. With trace IDs
-in the logs, Grafana links a slow request in a panel → its log lines → its trace. Not set up
-yet.
+A trace is one request drawn as a tree of timed steps, called spans:
+
+```
+POST /api/v1/tasks                       ██████████████████████  48 ms
+├─ handler - …                            ████████████████████   44 ms
+│  ├─ SELECT  (load the project)           ██                      3 ms
+│  ├─ INSERT  (the task)                      ███                  5 ms
+│  └─ INSERT  (audit event)                       ██               2 ms
+```
+
+Metrics say _that_ p95 latency rose; a trace says _which step_ was slow. The API code is in
+`apps/api/src/telemetry.ts`:
+
+- `@fastify/otel` makes the root span per request, named by route pattern like the metrics'
+  `route` label, plus a child span for the handler. The health probes are skipped.
+- Every SQL query gets a span with its parameterised text (`… where "email" = $1`). Parameter
+  values are never recorded, since they can contain password hashes and tokens. drizzle-orm
+  0.45 contains span code of its own, but it never loads OpenTelemetry, so TiDo wraps Drizzle's
+  query methods itself.
+- Each log line written during a request gets `trace_id` and `span_id` (the pino `mixin`).
+- The API exports only when `OTEL_EXPORTER_OTLP_ENDPOINT` is set (the cluster ConfigMap sets
+  it), so local development and tests run without tracing.
+
+Install Tempo:
+
+```bash
+helm upgrade --install tempo grafana-community/tempo --version 3.2.1 \
+  -n monitoring -f deploy/monitoring/values/tempo.yaml --wait
+```
+
+The Grafana values define the Tempo data source and the links between Loki and Tempo; apply
+them with the Phase 1 `helm upgrade --install kps …` command. Then release TiDo (staging, then
+production) so the API starts sending traces.
+
+**Explore:**
+
+1. Grafana → Explore → **Tempo** → Query type **Search**: Service name `tido-api`. Each row is a
+   request; click one to open its waterfall. Click a span to see its attributes (route, status,
+   SQL text).
+2. **Traces → logs:** on any span, click the logs icon. Grafana runs
+   `{app="tido-api"} |= "<trace id>"` in Loki: the `incoming request` and `request completed`
+   lines for exactly that request.
+3. **Logs → traces:** in Explore → Loki, expand any `tido-api` request line. Next to
+   `trace_id` there is a **View trace** button.
+4. **TraceQL**, Tempo's query language (Query type **TraceQL**):
+
+   ```traceql
+   { resource.service.name = "tido-api" && duration > 50ms }
+   { span.db.system.name = "postgresql" && duration > 10ms }
+   { resource.k8s.namespace.name = "tido-production" && span.http.response.status_code >= 500 }
+   ```
+
+   The first finds slow requests, the second slow queries, the third production errors.
+
+5. **Drilldown → Traces** is the click-through view, like Logs Drilldown: rate, errors and
+   duration per span name, without writing queries.
+
+**Exercise:** open the calendar for a busy month, find that request in Tempo, and count its SQL
+spans. Many small identical queries in a row (an "N+1") is the classic thing traces reveal.
 
 ## Troubleshooting
 
-| Symptom                                  | Check                                                                                        |
-| ---------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Panel says "No data"                     | Prometheus → Targets: is the job UP? Then run the panel's query in Explore without filters.  |
-| Target DOWN, `connection refused`        | On K3s, a NetworkPolicy (Phase 2). Otherwise the pod is not listening: check `METRICS_PORT`. |
-| Target DOWN, `context deadline exceeded` | A NetworkPolicy that drops silently, or a pod too busy to answer within the scrape timeout.  |
-| PodMonitor has no target at all          | Its `selector` labels or port _name_ do not match the pod: `kubectl get pod --show-labels`.  |
-| No logs in Loki                          | Alloy UI (port 12345): is `loki.write` healthy? `kubectl -n monitoring logs deploy/alloy`.   |
-| Loki "too many outstanding requests"     | Shorten the time range or add label filters before `                                         | `.  |
-| `helm` cannot reach the cluster          | `echo $KUBECONFIG` should print `~/.kube/config` (Phase 0).                                  |
+| Symptom                                  | Check                                                                                                                                                           |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Panel says "No data"                     | Prometheus → Targets: is the job UP? Then run the panel's query in Explore without filters.                                                                     |
+| Target DOWN, `connection refused`        | On K3s, a NetworkPolicy (Phase 2). Otherwise the pod is not listening: check `METRICS_PORT`.                                                                    |
+| Target DOWN, `context deadline exceeded` | A NetworkPolicy that drops silently, or a pod too busy to answer within the scrape timeout.                                                                     |
+| PodMonitor has no target at all          | Its `selector` labels or port _name_ do not match the pod: `kubectl get pod --show-labels`.                                                                     |
+| No logs in Loki                          | Alloy UI (port 12345): is `loki.write` healthy? `kubectl -n monitoring logs deploy/alloy`.                                                                      |
+| Alloy change has no effect               | Helm templates the config: compare `kubectl -n monitoring get cm alloy -o yaml` with the values file. A changed ConfigMap reaches the pod after up to a minute. |
+| Loki "too many outstanding requests"     | Shorten the time range or narrow the label selector before any filters.                                                                                         |
+| No traces in Tempo                       | `kubectl -n tido-staging exec deploy/tido-api -- env \| grep OTEL`, then `kubectl -n monitoring logs tempo-0`.                                                  |
+| `helm` cannot reach the cluster          | `echo $KUBECONFIG` should print `~/.kube/config` (Phase 0).                                                                                                     |
 
 ## Upgrading or removing
 
@@ -293,6 +354,6 @@ first; its README lists the steps.
 
 ```bash
 kubectl delete -k deploy/monitoring/k8s
-helm -n monitoring uninstall alloy loki kps
+helm -n monitoring uninstall tempo alloy loki kps
 kubectl delete namespace monitoring     # also deletes stored metrics, logs and dashboards
 ```

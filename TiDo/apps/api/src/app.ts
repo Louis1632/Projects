@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import type FastifyOtelInstrumentation from '@fastify/otel';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import {
   jsonSchemaTransform,
@@ -20,6 +21,7 @@ import { authPlugin } from './plugins/auth';
 import { errorsPlugin } from './plugins/errors';
 import { metricsPlugin } from './plugins/metrics';
 import { securityPlugin } from './plugins/security';
+import { traceLogFields } from './telemetry';
 import './types';
 
 export interface BuildAppOptions {
@@ -27,13 +29,15 @@ export interface BuildAppOptions {
   db: Database;
   logger?: FastifyServerOptions['logger'];
   metricsRegistry?: Registry;
+  tracing?: FastifyOtelInstrumentation;
 }
 
-export async function buildApp({ config, db, logger, metricsRegistry }: BuildAppOptions) {
+export async function buildApp({ config, db, logger, metricsRegistry, tracing }: BuildAppOptions) {
   const app = Fastify({
     logger: logger ?? {
       level: config.logLevel,
       redact: ['req.headers.cookie', 'req.headers.authorization', 'res.headers["set-cookie"]'],
+      mixin: traceLogFields,
     },
     trustProxy: config.trustProxy,
     genReqId: () => randomUUID(),
@@ -45,6 +49,8 @@ export async function buildApp({ config, db, logger, metricsRegistry }: BuildApp
   app.decorate('config', config);
   app.decorate('db', db);
 
+  // First, so it wraps every later plugin, hook and route.
+  if (tracing) await app.register(tracing.plugin());
   await app.register(metricsPlugin, { registry: metricsRegistry ?? new Registry() });
   await app.register(errorsPlugin);
   await app.register(securityPlugin);

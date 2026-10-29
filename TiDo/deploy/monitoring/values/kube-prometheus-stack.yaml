@@ -75,12 +75,37 @@ grafana:
       traefik.ingress.kubernetes.io/router.entrypoints: websecure
       traefik.ingress.kubernetes.io/router.tls: 'true'
     hosts: [grafana.home.arpa]
+  # Loki and Tempo link to each other: a log line's trace_id opens its trace, and a span opens
+  # its log lines. `$$` is a literal `$` here (Grafana expands $VARS in provisioning files).
   additionalDataSources:
     - name: Loki
       uid: loki
       type: loki
       access: proxy
       url: http://loki.monitoring.svc:3100
+      jsonData:
+        derivedFields:
+          - name: TraceID
+            matcherRegex: '"trace_id":"(\w+)"'
+            url: '$${__value.raw}'
+            datasourceUid: tempo
+            urlDisplayLabel: View trace
+    - name: Tempo
+      uid: tempo
+      type: tempo
+      access: proxy
+      url: http://tempo.monitoring.svc:3200
+      jsonData:
+        nodeGraph:
+          enabled: true
+        lokiSearch:
+          datasourceUid: loki
+        tracesToLogsV2:
+          datasourceUid: loki
+          spanStartTimeShift: -1m
+          spanEndTimeShift: 1m
+          customQuery: true
+          query: '{app="tido-api"} |= "$${__trace.traceId}"'
   # Grafana settles around 350Mi with the bundled dashboards; headroom for imports and big queries.
   resources:
     requests:
