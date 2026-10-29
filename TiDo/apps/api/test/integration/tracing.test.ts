@@ -1,5 +1,6 @@
 import { Writable } from 'node:stream';
 import { InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-node';
+import { sql } from 'drizzle-orm';
 import { createDb } from '@tido/db';
 import { afterAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../../src/app';
@@ -60,5 +61,11 @@ describe('tracing against PostgreSQL', () => {
 
     const completed = lines.find((line) => line.msg === 'request completed');
     expect(completed?.trace_id).toBe(traceId);
+  });
+
+  it('does not trace queries made outside a request, such as the readiness probe', async () => {
+    exporter.reset();
+    await db.execute(sql`select 1`);
+    expect(exporter.getFinishedSpans()).toEqual([]);
   });
 });

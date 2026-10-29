@@ -74,6 +74,9 @@ function instrumentDrizzle(tracer: Tracer) {
       this: PostgresJsPreparedQuery<never>,
       placeholderValues?: Record<string, unknown>,
     ) {
+      // Outside a traced request (the readiness probe's `select 1`, startup) a span would
+      // become a one-span trace of its own; skip it.
+      if (!trace.getActiveSpan()) return original.call(this, placeholderValues);
       const query = (this as unknown as { queryString: string }).queryString;
       const operation = /^\s*(\w+)/.exec(query)?.[1]?.toUpperCase() ?? 'QUERY';
       return tracer.startActiveSpan(
