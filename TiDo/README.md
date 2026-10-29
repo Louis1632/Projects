@@ -4,6 +4,69 @@ TiDo is a shared, self-hosted task workspace for a household or small team: list
 tasks with one level of subtasks, labels, assignment, a month calendar with an upcoming agenda,
 and fully custom recurring tasks.
 
+## Quick links
+
+Passwords are never stored in this (public) repository: each one comes with the command that
+prints it from the cluster. Commands assume `export KUBECONFIG=$HOME/.kube/config`.
+
+**The app**
+
+| What                    | Link                                  | Notes                                                |
+| ----------------------- | ------------------------------------- | ---------------------------------------------------- |
+| Production              | https://synisterpc.tailbe657c.ts.net  | Tailscale devices only; trusted certificate          |
+| Staging                 | https://tido-staging.home.arpa        | This PC only (`/etc/hosts`); self-signed certificate |
+| Local dev web           | http://localhost:5173                 | After `pnpm dev`                                     |
+| Local dev API docs      | http://localhost:3000/docs            | OpenAPI; development only                            |
+| Version of a deployment | `<app link>/version.json`             | Or **What's new** in the app's sidebar               |
+| GitHub                  | https://github.com/Louis1632/Projects | Pull requests, CI runs                               |
+
+Forgotten app password: an owner issues a reset link from **People**. There is no recovery yet
+for a workspace whose only owner is locked out, so keep a second owner or a password manager.
+
+**Monitoring** (shared stack, private repo
+[Louis1632/homelab-platform](https://github.com/Louis1632/homelab-platform), which has its own
+quick links)
+
+| What        | Link                                            |
+| ----------- | ----------------------------------------------- |
+| Grafana     | https://grafana.home.arpa (user `admin`)        |
+| TiDo logs   | Grafana → Explore → Loki: `{app="tido-api"}`    |
+| TiDo traces | Grafana → Explore → Tempo: service `tido-api`   |
+| TiDo alerts | Grafana → Alerting → Alert rules, filter `Tido` |
+| Portainer   | https://localhost:30779                         |
+
+```bash
+kubectl -n monitoring get secret kps-grafana -o jsonpath='{.data.admin-password}' | base64 -d; echo
+```
+
+**Databases**
+
+| Environment | Host and port                                   | Database | User   | Password                                                                                        |
+| ----------- | ----------------------------------------------- | -------- | ------ | ----------------------------------------------------------------------------------------------- |
+| Local dev   | `localhost:5432` (Docker Compose)               | `tido`   | `tido` | `tido` (local only)                                                                             |
+| Staging     | `localhost:15432` while port-forwarding (below) | `tido`   | `tido` | `kubectl -n tido-staging get secret tido-db-app -o jsonpath='{.data.password}' \| base64 -d`    |
+| Production  | `localhost:25432` while port-forwarding (below) | `tido`   | `tido` | `kubectl -n tido-production get secret tido-db-app -o jsonpath='{.data.password}' \| base64 -d` |
+
+The cluster databases aren't exposed outside K3s. Open a tunnel in one terminal, then connect
+with any PostgreSQL client (DBeaver, pgAdmin, or `psql` through Docker as below):
+
+```bash
+kubectl -n tido-staging port-forward svc/tido-db-rw 15432:5432       # production: tido-production, 25432
+
+PGPASSWORD="$(kubectl -n tido-staging get secret tido-db-app -o jsonpath='{.data.password}' | base64 -d)" \
+  docker run --rm -it --network host -e PGPASSWORD postgres:17-alpine psql -h localhost -p 15432 -U tido tido
+```
+
+Be careful in production: there are no backups yet (`docs/runbooks/production-gates.md`).
+
+**Infrastructure**
+
+| What           | Where                                                                   |
+| -------------- | ----------------------------------------------------------------------- |
+| Image registry | http://localhost:5000/v2/_catalog (Docker container `tido-registry`)    |
+| Pods           | `kubectl get pods -n tido-staging` / `-n tido-production`, or Portainer |
+| Runbooks       | `docs/runbooks/` (releases, production, backups, observability)         |
+
 It is a modular TypeScript monolith:
 
 | Path                 | What it is                                                                |
