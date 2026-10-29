@@ -24,12 +24,13 @@ None.
 
 ## Accepted risks
 
-| Risk                                                                                                                                 | Why it's accepted                                                                                                                                                                             | Revisit when                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| Failed sign-ins are counted per email, so ten wrong passwords in 15 minutes lock that account out for everyone, including its owner. | It stops password guessing from many addresses. Since TIDO-SEC-002 the per-IP limit is real again, so a lock-out needs a deliberate attacker on the tailnet.                                  | TiDo is ever reachable outside the tailnet.     |
-| The invite/reset token stays in the browser's address bar and history at `/invite/<token>`.                                          | Links are single-use and expire (7 days for invites, 24 hours for resets). `Referrer-Policy: same-origin` keeps the token from leaking to other sites. Rewriting the URL would break refresh. | Links become reusable or long-lived.            |
-| Login throttling lives in the API process, so it resets on restart and wouldn't be shared across replicas.                           | TiDo runs one API replica (noted in `deploy/k8s/base/api-deployment.yaml`).                                                                                                                   | The API is scaled out.                          |
-| The development database uses the password `tido`, published in this public repo.                                                    | It's local test data, bound to loopback since TIDO-SEC-001.                                                                                                                                   | Never: don't put real data in the dev database. |
+| Risk                                                                                                                                                       | Why it's accepted                                                                                                                                                                                                                | Revisit when                                                                                                                      |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Failed sign-ins are counted per email, so ten wrong passwords in 15 minutes lock that account out for everyone, including its owner.                       | It stops password guessing from many addresses. Since TIDO-SEC-002 the per-IP limit is real again, so a lock-out needs a deliberate attacker on the tailnet.                                                                     | TiDo is ever reachable outside the tailnet.                                                                                       |
+| The invite/reset token stays in the browser's address bar and history at `/invite/<token>`.                                                                | Links are single-use and expire (7 days for invites, 24 hours for resets). `Referrer-Policy: same-origin` keeps the token from leaking to other sites. Rewriting the URL would break refresh.                                    | Links become reusable or long-lived.                                                                                              |
+| Login throttling lives in the API process, so it resets on restart and wouldn't be shared across replicas.                                                 | TiDo runs one API replica (noted in `deploy/k8s/base/api-deployment.yaml`).                                                                                                                                                      | The API is scaled out.                                                                                                            |
+| The development database uses the password `tido`, published in this public repo.                                                                          | It's local test data, bound to loopback since TIDO-SEC-001.                                                                                                                                                                      | Never: don't put real data in the dev database.                                                                                   |
+| Staging and production share one host name (ports 8443 and 443), and browsers don't separate cookies by port, so each receives the other's session cookie. | Both run only code from this repo, built by the same person. Cookies are `HttpOnly`, logs redact the `Cookie` header, and each environment has its own HMAC key, so one's session cookie is useless to the other (TIDO-SEC-011). | Staging runs code nobody has reviewed (someone else's branch, PR previews), or staging can get its own name (Tailscale Services). |
 
 ## What's already done well
 
@@ -62,6 +63,43 @@ The baseline, recorded on 2026-10-29 by the first review, so later changes don't
   deactivations, each with the actor and IP.
 
 ## Entries
+
+### TIDO-SEC-011: Staging is reachable only over Tailscale, with a trusted certificate
+
+_2026-10-30 · Low · Fixed (with HOMELAB-SEC-008)_
+
+**What was wrong:** staging was served at `https://tido-staging.home.arpa` on Traefik's port 443,
+with a self-signed certificate and no allow-list. The name resolved only on the PC (through
+`/etc/hosts`), but as TIDO-SEC-003 showed, a name hides nothing: anyone on the Wi-Fi who sent
+`Host: tido-staging.home.arpa` to `192.168.101.112` reached staging's sign-in page. It also
+couldn't be tested from a phone.
+
+**Why it mattered:** staging runs the newest, least-tested code, and its owner account uses the
+same email as production's. A guest on the Wi-Fi could try passwords there. The self-signed
+certificate also trained us to click through browser warnings.
+
+**Fix:** staging moved to `https://synisterpc.tailbe657c.ts.net:8443`, which is production's
+Tailscale name and certificate on Traefik's new `staging` entry point (HOMELAB-SEC-008):
+
+- The `tailnet-only` middleware moved from the production overlay to `deploy/k8s/base`, and both
+  overlays attach it. Anything outside Tailscale's ranges gets 403 on either port.
+- `deploy/scripts/tailscale-cert.sh` writes the certificate into both namespaces, so the weekly
+  cron job renews both. `release-staging.sh` runs it instead of making a self-signed certificate.
+- Staging's session cookie is `__Host-tido_staging_session`. Cookies are scoped by host, not
+  port, so with one name, signing in to one environment would replace the other's session in the
+  same browser. Each environment still receives the other's cookie; see **Accepted risks**.
+- `host-setup.sh` no longer adds `tido-staging.home.arpa` to `/etc/hosts`.
+
+**How it was verified:** `kubectl kustomize` of the production overlay renders the same
+resources as before, apart from one added `app.kubernetes.io/part-of` label on the middleware.
+The staging overlay renders the new host, port, cookie name and middleware. Checks against the
+running release are to be recorded at the first release on port 8443: Tailscale address 200,
+Wi-Fi address 403, a phone with Tailscale on loads staging, and signing in to staging leaves
+production signed in.
+
+**Lesson:** "only this machine can reach it" was true of the name, not of the service. Give every
+environment the same access control as production, even a test one. And sharing a host name
+across ports shares cookies: ports separate servers, not browser storage.
 
 ### TIDO-SEC-010: Dependencies and base images are kept current automatically
 

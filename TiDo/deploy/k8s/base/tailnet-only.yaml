@@ -1,0 +1,18 @@
+# Staging and production are for the tailnet only. Traefik also listens on the LAN address, and
+# the hostname is public in Certificate Transparency logs, so the Host name alone hides nothing:
+# requests from outside Tailscale's address ranges get 403 here. Each overlay attaches it to its
+# ingress as <namespace>-tailnet-only@kubernetescrd.
+# Needs Traefik to see real client IPs (hostPorts, set by homelab-platform's
+# platform/traefik-config.yaml); otherwise every request looks internal and
+# is refused. See docs/security.md (TIDO-SEC-003, TIDO-SEC-011).
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: tailnet-only
+  labels:
+    tido.io/phase: platform
+spec:
+  ipAllowList:
+    sourceRange:
+      - 100.64.0.0/10 # Tailscale IPv4 (CGNAT range)
+      - fd7a:115c:a1e0::/48 # Tailscale IPv6

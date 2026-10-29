@@ -11,14 +11,14 @@ prints it from the cluster. Commands assume `export KUBECONFIG=$HOME/.kube/confi
 
 **The app**
 
-| What                    | Link                                  | Notes                                                |
-| ----------------------- | ------------------------------------- | ---------------------------------------------------- |
-| Production              | https://synisterpc.tailbe657c.ts.net  | Tailscale devices only; trusted certificate          |
-| Staging                 | https://tido-staging.home.arpa        | This PC only (`/etc/hosts`); self-signed certificate |
-| Local dev web           | http://localhost:5173                 | After `pnpm dev`                                     |
-| Local dev API docs      | http://localhost:3000/docs            | OpenAPI; development only                            |
-| Version of a deployment | `<app link>/version.json`             | Or **What's new** in the app's sidebar               |
-| GitHub                  | https://github.com/Louis1632/Projects | Pull requests, CI runs                               |
+| What                    | Link                                      | Notes                                                   |
+| ----------------------- | ----------------------------------------- | ------------------------------------------------------- |
+| Production              | https://synisterpc.tailbe657c.ts.net      | Tailscale devices only; trusted certificate             |
+| Staging                 | https://synisterpc.tailbe657c.ts.net:8443 | Tailscale devices only (phone too); trusted certificate |
+| Local dev web           | http://localhost:5173                     | After `pnpm dev`                                        |
+| Local dev API docs      | http://localhost:3000/docs                | OpenAPI; development only                               |
+| Version of a deployment | `<app link>/version.json`                 | Or **What's new** in the app's sidebar                  |
+| GitHub                  | https://github.com/Louis1632/Projects     | Pull requests, CI runs                                  |
 
 Forgotten app password: an owner issues a reset link from **People**. There is no recovery yet
 for a workspace whose only owner is locked out, so keep a second owner or a password manager.

@@ -3,4 +3,7 @@ kind: ConfigMap
 metadata:
   name: tido-api-config
 data:
-  WEB_ORIGIN: https://tido-staging.home.arpa
+  WEB_ORIGIN: https://synisterpc.tailbe657c.ts.net:8443
+  # Browsers don't separate cookies by port, so staging's cookie needs its own name or signing in
+  # to one environment would sign you out of the other.
+  SESSION_COOKIE_NAME: __Host-tido_staging_session

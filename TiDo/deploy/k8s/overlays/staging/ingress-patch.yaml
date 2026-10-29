@@ -1,6 +1,6 @@
 - op: replace
   path: /spec/tls/0/hosts/0
-  value: tido-staging.home.arpa
+  value: synisterpc.tailbe657c.ts.net
 - op: replace
   path: /spec/rules/0/host
-  value: tido-staging.home.arpa
+  value: synisterpc.tailbe657c.ts.net

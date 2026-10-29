@@ -10,7 +10,6 @@ resources:
   - namespace.yaml
   - ../../base
   - redirect.yaml
-  - tailnet-only.yaml
 # Backups are OFF (no backup drive yet; see docs/runbooks/production-gates.md). To turn on
 # nightly backups to the USB drive, run deploy/scripts/prod-host-setup.sh with the drive's
 # partition, then uncomment these two lines and release again.
@@ -22,7 +21,7 @@ patches:
       name: tido
     path: ingress-patch.yaml
   - path: config-patch.yaml
-  # Tailscale addresses only (tailnet-only.yaml). Kept out of ingress-patch.yaml, whose values
+  # Tailscale addresses only (base/tailnet-only.yaml). Kept out of ingress-patch.yaml, whose values
   # release-production.sh rewrites.
   - target:
       kind: Ingress
