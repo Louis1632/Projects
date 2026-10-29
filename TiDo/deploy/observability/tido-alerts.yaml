@@ -1,0 +1,54 @@
+# TiDo alerts. The chart's default rules already cover crash-looping pods, full volumes,
+# node pressure and down targets; these add what only TiDo's own metrics can tell.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: tido
+  namespace: monitoring
+spec:
+  groups:
+    - name: tido
+      rules:
+        - alert: TidoApiDown
+          expr: up{job="tido-api"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: TiDo API in {{ $labels.namespace }} is not answering /metrics.
+            description: Check `kubectl -n {{ $labels.namespace }} get pods` and the API logs in Grafana.
+
+        - alert: TidoApiErrors
+          # Share of requests answered with 5xx over the last 5 minutes.
+          expr: |
+            sum by (namespace) (rate(http_request_duration_seconds_count{job="tido-api", status_code=~"5.."}[5m]))
+              / sum by (namespace) (rate(http_request_duration_seconds_count{job="tido-api"}[5m]))
+              > 0.05
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: Over 5% of TiDo API requests in {{ $labels.namespace }} are failing.
+            description: 'Find them in Loki: {namespace="{{ $labels.namespace }}", app="tido-api", level="error"}'
+
+        - alert: TidoApiSlow
+          # 95th percentile request time, excluding the probes.
+          expr: |
+            histogram_quantile(0.95,
+              sum by (namespace, le) (rate(http_request_duration_seconds_bucket{job="tido-api", route!~"/healthz|/readyz"}[5m]))
+            ) > 1
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: TiDo API p95 latency in {{ $labels.namespace }} is above 1s.
+            description: Open the TiDo dashboard to see which route is slow.
+
+        - alert: TidoDatabaseDown
+          expr: up{job="tido-db"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: TiDo PostgreSQL in {{ $labels.namespace }} is not reporting metrics.
+            description: Check `kubectl -n {{ $labels.namespace }} get cluster tido-db` and the database pod logs.

@@ -13,3 +13,5 @@ data:
   TRUST_PROXY: 'true'
   WORKSPACE_TIMEZONE: Africa/Johannesburg
   LOG_LEVEL: info
+  METRICS_PORT: '9464'
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy.monitoring.svc:4318

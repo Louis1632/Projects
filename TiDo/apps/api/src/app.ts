@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import type FastifyOtelInstrumentation from '@fastify/otel';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import {
   jsonSchemaTransform,
@@ -7,6 +8,7 @@ import {
   type ZodTypeProvider,
 } from 'fastify-type-provider-zod';
 import { sql } from 'drizzle-orm';
+import { Registry } from 'prom-client';
 import type { Database } from '@tido/db';
 import type { Config } from './config';
 import { authRoutes } from './modules/auth/routes';
@@ -17,20 +19,25 @@ import { projectRoutes } from './modules/projects/routes';
 import { taskRoutes } from './modules/tasks/routes';
 import { authPlugin } from './plugins/auth';
 import { errorsPlugin } from './plugins/errors';
+import { metricsPlugin } from './plugins/metrics';
 import { securityPlugin } from './plugins/security';
+import { traceLogFields } from './telemetry';
 import './types';
 
 export interface BuildAppOptions {
   config: Config;
   db: Database;
   logger?: FastifyServerOptions['logger'];
+  metricsRegistry?: Registry;
+  tracing?: FastifyOtelInstrumentation;
 }
 
-export async function buildApp({ config, db, logger }: BuildAppOptions) {
+export async function buildApp({ config, db, logger, metricsRegistry, tracing }: BuildAppOptions) {
   const app = Fastify({
     logger: logger ?? {
       level: config.logLevel,
       redact: ['req.headers.cookie', 'req.headers.authorization', 'res.headers["set-cookie"]'],
+      mixin: traceLogFields,
     },
     trustProxy: config.trustProxy,
     genReqId: () => randomUUID(),
@@ -42,6 +49,9 @@ export async function buildApp({ config, db, logger }: BuildAppOptions) {
   app.decorate('config', config);
   app.decorate('db', db);
 
+  // First, so it wraps every later plugin, hook and route.
+  if (tracing) await app.register(tracing.plugin());
+  await app.register(metricsPlugin, { registry: metricsRegistry ?? new Registry() });
   await app.register(errorsPlugin);
   await app.register(securityPlugin);
   await app.register(authPlugin);

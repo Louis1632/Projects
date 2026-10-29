@@ -1,0 +1,37 @@
+# What Prometheus scrapes for TiDo (cluster-level targets such as Traefik live in
+# homelab-platform). A PodMonitor selects pods by label and names the container port to scrape;
+# the Prometheus operator turns it into scrape config.
+# `jobLabel` sets the `job` label from a pod label, so queries read {job="tido-api"}.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: tido-api
+  namespace: monitoring
+spec:
+  jobLabel: app.kubernetes.io/name
+  namespaceSelector:
+    matchNames: [tido-staging, tido-production]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tido-api
+  podMetricsEndpoints:
+    - port: metrics
+      interval: 30s
+---
+# CloudNativePG runs a PostgreSQL exporter in every instance pod (port `metrics`, 9187).
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: tido-db
+  namespace: monitoring
+spec:
+  jobLabel: cnpg.io/cluster
+  namespaceSelector:
+    matchNames: [tido-staging, tido-production]
+  selector:
+    matchLabels:
+      cnpg.io/cluster: tido-db
+      cnpg.io/podRole: instance
+  podMetricsEndpoints:
+    - port: metrics
+      interval: 30s

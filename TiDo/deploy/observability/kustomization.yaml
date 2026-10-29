@@ -1,0 +1,8 @@
+# TiDo's scrape targets and alert rules, for the shared observability stack in
+# Louis1632/homelab-platform (see docs/onboarding-an-app.md there). Apply after that stack,
+# which installs the PodMonitor and PrometheusRule CRDs:  kubectl apply -k deploy/observability
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - pod-monitors.yaml
+  - tido-alerts.yaml

@@ -8,6 +8,7 @@ resources:
   - configmap.yaml
   - database.yaml
   - network-policy.yaml
+  - network-policy-monitoring.yaml
   - api-service.yaml
   - web-service.yaml
   - ingress.yaml
