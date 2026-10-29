@@ -3,7 +3,7 @@
 FROM node:22-alpine AS build
 RUN npm install --global --no-fund --no-audit pnpm@12.16.1
 WORKDIR /repo
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json ./
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 COPY packages/contracts/package.json packages/contracts/

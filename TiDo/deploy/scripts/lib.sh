@@ -1,5 +1,6 @@
 # Shared helpers for TiDo deploy scripts. Source, do not execute.
 set -euo pipefail
+shopt -s inherit_errexit  # so a failure inside $(...) also stops the script
 
 TIDO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 REGISTRY="${TIDO_REGISTRY:-localhost:5000}"
