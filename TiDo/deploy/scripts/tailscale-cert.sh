@@ -4,6 +4,8 @@
 # so running this weekly from cron is cheap. Needs deploy/scripts/prod-host-setup.sh first.
 # Usage: deploy/scripts/tailscale-cert.sh
 source "$(dirname "$0")/lib.sh"
+# cron's PATH lacks /usr/local/bin, where K3s installs kubectl.
+export PATH="/usr/local/bin:${PATH}"
 need tailscale; need kubectl
 
 HOST="$(tailscale_host)"
