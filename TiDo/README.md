@@ -27,13 +27,13 @@ for a workspace whose only owner is locked out, so keep a second owner or a pass
 [Louis1632/homelab-platform](https://github.com/Louis1632/homelab-platform), which has its own
 quick links)
 
-| What        | Link                                                                                 |
-| ----------- | ------------------------------------------------------------------------------------ |
-| Grafana     | https://grafana.home.arpa (user `admin`)                                             |
-| TiDo logs   | Grafana → Explore → Loki: `{app="tido-api"}`                                         |
-| TiDo traces | Grafana → Explore → Tempo: service `tido-api`                                        |
-| TiDo alerts | Grafana → Alerting → Alert rules, filter `Tido`                                      |
-| Portainer   | `kubectl -n portainer port-forward svc/portainer 9443:9443` → https://localhost:9443 |
+| What        | Link                                                 |
+| ----------- | ---------------------------------------------------- |
+| Grafana     | https://grafana.home.arpa (user `admin`)             |
+| TiDo logs   | Grafana → Explore → Loki: `{app="tido-api"}`         |
+| TiDo traces | Grafana → Explore → Tempo: service `tido-api`        |
+| TiDo alerts | Grafana → Alerting → Alert rules, filter `Tido`      |
+| Portainer   | https://localhost:9443 (this PC; forwarded at login) |
 
 ```bash
 kubectl -n monitoring get secret kps-grafana -o jsonpath='{.data.admin-password}' | base64 -d; echo
