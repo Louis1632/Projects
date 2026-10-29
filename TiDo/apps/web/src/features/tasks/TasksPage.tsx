@@ -1,12 +1,14 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type DragEvent, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import type { Subtask, Task } from '@tido/contracts';
+import type { Section, SectionWithTasks, Subtask, Task } from '@tido/contracts';
 import { api } from '../../lib/api';
 import { useDashboard, useWorkspaceMutation } from '../../lib/queries';
 import { useShell } from '../layout/AppShell';
 import { defaultFilters, filtersActive, taskMatches, type TaskFilters } from './filters';
 import { priorityLabels, statusLabels } from './labels';
 import { TaskRow } from './TaskRow';
+
+type Dragged = { kind: 'section'; section: Section } | { kind: 'task'; task: Task };
 
 export function TasksPage() {
   const { projectId } = useParams();
@@ -15,15 +17,24 @@ export function TasksPage() {
   const dashboard = useDashboard().data!;
   const [filters, setFilters] = useState<TaskFilters>(defaultFilters);
   const [newSection, setNewSection] = useState('');
+  const [dragged, setDragged] = useState<Dragged | null>(null);
+  // The section or task id the dragged item would land on, for the drop highlight.
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
 
   const toggle = useWorkspaceMutation((task: Task | Subtask) =>
     api.completeTask(task.id, task.status !== 'done'),
   );
-  const move = useWorkspaceMutation((input: { task: Task; position: number }) =>
+  const move = useWorkspaceMutation((input: { task: Task; sectionId: string; position: number }) =>
     api.moveTask(input.task.id, {
-      sectionId: input.task.sectionId,
+      sectionId: input.sectionId,
       position: input.position,
       revision: input.task.revision,
+    }),
+  );
+  const moveSection = useWorkspaceMutation((input: { section: Section; position: number }) =>
+    api.updateSection(input.section.id, {
+      position: input.position,
+      revision: input.section.revision,
     }),
   );
   const addSection = useWorkspaceMutation((input: { projectId: string; name: string }) =>
@@ -62,6 +73,61 @@ export function TasksPage() {
         .mutateAsync({ projectId: single.id, name: newSection.trim() })
         .then(() => setNewSection('')),
     );
+  };
+
+  const startDrag = (event: DragEvent<HTMLElement>, item: Dragged, image?: Element | null) => {
+    event.stopPropagation();
+    event.dataTransfer.effectAllowed = 'move';
+    // Firefox only starts a drag when some data is set.
+    event.dataTransfer.setData('text/plain', item.kind === 'task' ? item.task.title : '');
+    if (image) event.dataTransfer.setDragImage(image, 24, 24);
+    setDragged(item);
+  };
+  const endDrag = () => {
+    setDragged(null);
+    setDropTarget(null);
+  };
+  const allowDrop = (event: DragEvent<HTMLElement>, targetId: string) => {
+    if (!dragged) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = 'move';
+    setDropTarget(targetId);
+  };
+
+  /** Puts the task just before `before`, or at the end of the section without one. */
+  const placeTask = (task: Task, section: SectionWithTasks, before?: Task) => {
+    if (before?.id === task.id) return;
+    const siblings = section.tasks.filter((candidate) => candidate.id !== task.id);
+    const position = before
+      ? siblings.findIndex((candidate) => candidate.id === before.id)
+      : siblings.length;
+    const current = section.tasks.findIndex((candidate) => candidate.id === task.id);
+    if (current === position) return;
+    void run(move.mutateAsync({ task, sectionId: section.id, position }));
+  };
+  const placeSection = (section: Section, sections: Section[], position: number) => {
+    const current = sections.findIndex((candidate) => candidate.id === section.id);
+    if (current === -1 || position < 0 || position >= sections.length || position === current)
+      return;
+    void run(moveSection.mutateAsync({ section, position }));
+  };
+
+  const dropOnSection = (
+    event: DragEvent<HTMLElement>,
+    section: SectionWithTasks,
+    sections: Section[],
+  ) => {
+    event.preventDefault();
+    if (dragged?.kind === 'task') placeTask(dragged.task, section);
+    if (dragged?.kind === 'section' && dragged.section.projectId === section.projectId) {
+      placeSection(
+        dragged.section,
+        sections,
+        sections.findIndex((candidate) => candidate.id === section.id),
+      );
+    }
+    endDrag();
   };
 
   return (
@@ -188,49 +254,124 @@ export function TasksPage() {
                 {project.name}
               </h2>
             )}
-            {project.sections.map((section) => {
-              const visible = section.tasks.filter((task) => taskMatches(task, effective, today));
-              return (
-                <section
-                  className="section-card"
-                  key={section.id}
-                  aria-label={`${project.name} – ${section.name}`}
-                >
-                  <div className="section-heading">
-                    <h3>{section.name}</h3>
+            <div className="section-columns">
+              {project.sections.map((section, sectionIndex) => {
+                const visible = section.tasks.filter((task) => taskMatches(task, effective, today));
+                const classes = ['section-card'];
+                if (dragged?.kind === 'section' && dragged.section.id === section.id)
+                  classes.push('dragging');
+                if (dropTarget === section.id) classes.push('drop-target');
+                return (
+                  <section
+                    className={classes.join(' ')}
+                    key={section.id}
+                    aria-label={`${project.name} – ${section.name}`}
+                    onDragOver={(event) => {
+                      if (
+                        dragged?.kind === 'task' ||
+                        dragged?.section.projectId === section.projectId
+                      )
+                        allowDrop(event, section.id);
+                    }}
+                    onDragLeave={(event) => {
+                      if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+                        setDropTarget(null);
+                    }}
+                    onDrop={(event) => dropOnSection(event, section, project.sections)}
+                  >
+                    <div
+                      className="section-heading"
+                      draggable
+                      title="Drag to move this section"
+                      onDragStart={(event) =>
+                        startDrag(
+                          event,
+                          { kind: 'section', section },
+                          event.currentTarget.parentElement,
+                        )
+                      }
+                      onDragEnd={endDrag}
+                    >
+                      <span className="drag-grip" aria-hidden="true">
+                        ⠿
+                      </span>
+                      <h3>{section.name}</h3>
+                      <span className="row-actions">
+                        <button
+                          className="icon-button small"
+                          aria-label={`Move ${section.name} left`}
+                          disabled={sectionIndex === 0}
+                          onClick={() => placeSection(section, project.sections, sectionIndex - 1)}
+                        >
+                          ←
+                        </button>
+                        <button
+                          className="icon-button small"
+                          aria-label={`Move ${section.name} right`}
+                          disabled={sectionIndex === project.sections.length - 1}
+                          onClick={() => placeSection(section, project.sections, sectionIndex + 1)}
+                        >
+                          →
+                        </button>
+                      </span>
+                    </div>
+                    {visible.map((task) => (
+                      <TaskRow
+                        key={task.id}
+                        task={task}
+                        members={dashboard.members}
+                        today={today}
+                        onEdit={(item) => openEditor({ mode: 'edit', task: item })}
+                        onToggle={(item) => void run(toggle.mutateAsync(item))}
+                        onMove={(item, direction) => {
+                          const index = section.tasks.findIndex(
+                            (candidate) => candidate.id === item.id,
+                          );
+                          const neighbour = section.tasks[index + direction];
+                          if (neighbour)
+                            void run(
+                              move.mutateAsync({
+                                task: item,
+                                sectionId: section.id,
+                                position: index + direction,
+                              }),
+                            );
+                        }}
+                        dragging={dragged?.kind === 'task' && dragged.task.id === task.id}
+                        dropBefore={dragged?.kind === 'task' && dropTarget === task.id}
+                        dragProps={{
+                          draggable: true,
+                          onDragStart: (event) =>
+                            startDrag(event, { kind: 'task', task }, event.currentTarget),
+                          onDragEnd: endDrag,
+                          onDragOver: (event) => {
+                            if (dragged?.kind === 'task') allowDrop(event, task.id);
+                          },
+                          onDrop: (event) => {
+                            if (dragged?.kind !== 'task') return;
+                            event.preventDefault();
+                            event.stopPropagation();
+                            placeTask(dragged.task, section, task);
+                            endDrag();
+                          },
+                        }}
+                      />
+                    ))}
+                    {visible.length === 0 && (
+                      <p className="empty-inline">
+                        {section.tasks.length ? 'No matching tasks.' : 'No tasks yet.'}
+                      </p>
+                    )}
                     <button
-                      className="text-button"
+                      className="text-button add-task"
                       onClick={() => openEditor({ mode: 'create', sectionId: section.id })}
                     >
                       + Add task
                     </button>
-                  </div>
-                  {visible.map((task) => (
-                    <TaskRow
-                      key={task.id}
-                      task={task}
-                      members={dashboard.members}
-                      today={today}
-                      onEdit={(item) => openEditor({ mode: 'edit', task: item })}
-                      onToggle={(item) => void run(toggle.mutateAsync(item))}
-                      onMove={(item, direction) => {
-                        const index = section.tasks.findIndex(
-                          (candidate) => candidate.id === item.id,
-                        );
-                        const neighbour = section.tasks[index + direction];
-                        if (neighbour)
-                          void run(move.mutateAsync({ task: item, position: index + direction }));
-                      }}
-                    />
-                  ))}
-                  {visible.length === 0 && (
-                    <p className="empty-inline">
-                      {section.tasks.length ? 'No matching tasks.' : 'No tasks yet.'}
-                    </p>
-                  )}
-                </section>
-              );
-            })}
+                  </section>
+                );
+              })}
+            </div>
             {single && (
               <form className="inline-form" onSubmit={submitSection}>
                 <label className="sr-only" htmlFor="new-section">

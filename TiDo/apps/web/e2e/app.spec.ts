@@ -63,6 +63,20 @@ test('owner completes setup and organises tasks', async ({ page }) => {
   await row.getByRole('button', { name: 'Complete Clean the garage' }).click();
   await expect(row).toHaveClass(/completed/);
 
+  // Sections are columns: drag a task into a new one, then drag that column to the front.
+  await page.getByPlaceholder('New section name').fill('Later');
+  await page.getByRole('button', { name: 'Add section' }).click();
+  const later = page.getByRole('region', { name: 'House – Later' });
+  await expect(later).toBeVisible();
+  await row.dragTo(later);
+  await expect(later.getByText('Clean the garage')).toBeVisible();
+  await later
+    .getByText('Later', { exact: true })
+    .dragTo(page.getByRole('region', { name: 'House – Tasks' }));
+  await expect(page.getByRole('region', { name: /^House – / }).first()).toHaveAccessibleName(
+    'House – Later',
+  );
+
   // The one-time setup link cannot be reused.
   await page.context().clearCookies();
   await page.goto(new URL(ownerSetupUrl).pathname);

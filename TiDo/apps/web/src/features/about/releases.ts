@@ -16,6 +16,21 @@ export interface Release {
 
 export const releases: Release[] = [
   {
+    version: '0.2.0',
+    date: '2026-10-29',
+    summary: 'Sections of a list now sit side by side as columns you can rearrange.',
+    changes: [
+      {
+        kind: 'improved',
+        text: 'Each section is a column. Drag a section by its name, or use the arrows, to reorder them.',
+      },
+      {
+        kind: 'new',
+        text: 'Drag a task onto another task or into another column to move it there.',
+      },
+    ],
+  },
+  {
     version: '0.1.0',
     date: '2026-10-29',
     summary: 'The first release of TiDo, a shared task list for your household or team.',

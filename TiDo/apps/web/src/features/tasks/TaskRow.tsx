@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import type { CSSProperties, HTMLAttributes } from 'react';
 import type { Member, Subtask, Task } from '@tido/contracts';
 import { prettyDay } from '../../lib/dates';
 import { describeRule } from '../../lib/recurrence';
@@ -12,6 +12,11 @@ interface TaskRowProps {
   onToggle: (task: Task | Subtask) => void;
   onMove?: (task: Task, direction: -1 | 1) => void;
   showSection?: string;
+  /** Drag-and-drop handlers, for views where rows can be dragged around. */
+  dragProps?: HTMLAttributes<HTMLElement>;
+  dragging?: boolean;
+  /** Shows where a dragged task would land: just above this row. */
+  dropBefore?: boolean;
 }
 
 export function TaskRow({
@@ -22,12 +27,19 @@ export function TaskRow({
   onToggle,
   onMove,
   showSection,
+  dragProps,
+  dragging,
+  dropBefore,
 }: TaskRowProps) {
   const assignee = members.find((member) => member.id === task.assigneeId);
   const done = task.status === 'done';
   const openSubtasks = task.subtasks.filter((subtask) => subtask.status !== 'done').length;
+  const classes = ['task-row'];
+  if (done) classes.push('completed');
+  if (dragging) classes.push('dragging');
+  if (dropBefore) classes.push('drop-before');
   return (
-    <article className={done ? 'task-row completed' : 'task-row'} data-testid="task-row">
+    <article {...dragProps} className={classes.join(' ')} data-testid="task-row">
       <button
         className="check-button"
         aria-label={done ? `Reopen ${task.title}` : `Complete ${task.title}`}

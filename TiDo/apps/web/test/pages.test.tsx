@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { addDays, todayIn } from '../src/lib/dates';
@@ -121,6 +121,70 @@ describe('task list', () => {
     await screen.findByRole('link', { name: /Calendar/ });
     expect(screen.queryByRole('link', { name: /People/ })).not.toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/tasks');
+  });
+});
+
+describe('section columns', () => {
+  const laterId = '00000000-0000-4000-8000-0000000000c2';
+  const chore = makeTask({ title: 'Sweep porch' });
+  const withTwoSections = () => {
+    const dashboard = makeDashboard([chore]);
+    const project = dashboard.projects[0]!;
+    project.sections.push({
+      ...project.sections[0]!,
+      id: laterId,
+      name: 'Later',
+      position: 1,
+      tasks: [],
+    });
+    return dashboard;
+  };
+  const dataTransfer = () => ({
+    effectAllowed: 'all',
+    dropEffect: 'none',
+    setData: () => undefined,
+    setDragImage: () => undefined,
+  });
+
+  it('reorders sections with the arrow buttons', async () => {
+    const calls = mockApi({
+      'GET /auth/me': () => ({ body: user }),
+      'GET /dashboard': () => ({ body: withTwoSections() }),
+      [`PATCH /sections/${laterId}`]: () => ({ body: {} }),
+    });
+    renderApp('/tasks');
+    expect(await screen.findByRole('button', { name: 'Move Tasks left' })).toBeDisabled();
+    await userEvent.click(screen.getByRole('button', { name: 'Move Later left' }));
+    await waitFor(() =>
+      expect(calls).toContainEqual({
+        method: 'PATCH',
+        path: `/sections/${laterId}`,
+        body: { position: 0, revision: 1 },
+      }),
+    );
+  });
+
+  it('moves a task into another section by dragging it there', async () => {
+    const calls = mockApi({
+      'GET /auth/me': () => ({ body: user }),
+      'GET /dashboard': () => ({ body: withTwoSections() }),
+      [`POST /tasks/${chore.id}/move`]: () => ({ body: chore }),
+    });
+    renderApp('/tasks');
+    const row = (await screen.findByText('Sweep porch')).closest('article')!;
+    const later = screen.getByRole('region', { name: 'House – Later' });
+    fireEvent.dragStart(row, { dataTransfer: dataTransfer() });
+    fireEvent.dragOver(later, { dataTransfer: dataTransfer() });
+    expect(later).toHaveClass('drop-target');
+    fireEvent.drop(later, { dataTransfer: dataTransfer() });
+    await waitFor(() =>
+      expect(calls).toContainEqual({
+        method: 'POST',
+        path: `/tasks/${chore.id}/move`,
+        body: { sectionId: laterId, position: 0, revision: 1 },
+      }),
+    );
+    expect(later).not.toHaveClass('drop-target');
   });
 });
 
