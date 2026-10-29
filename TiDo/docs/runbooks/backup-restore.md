@@ -1,5 +1,9 @@
 # Backups and restore
 
+> **Production backups are currently off.** Everything below applies once they are turned on
+> (`production-release.md`, backups section). Until then, take a manual dump before risky
+> changes: `kubectl -n tido-production exec tido-db-1 -c postgres -- pg_dump -Fc tido > tido-$(date +%F).dump`.
+
 ## Production backups
 
 The `tido-backup` CronJob in `tido-production` writes a `pg_dump` custom-format dump to the

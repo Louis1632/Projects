@@ -1,5 +1,5 @@
 # Production: reachable only over Tailscale, with a trusted certificate for this machine's
-# Tailscale name, and nightly backups to the USB backup drive.
+# Tailscale name.
 # Released with deploy/scripts/release-production.sh, which promotes the image digests
 # already running on staging and writes the hostname below. See
 # docs/runbooks/production-release.md and docs/runbooks/production-gates.md.
@@ -10,7 +10,11 @@ resources:
   - namespace.yaml
   - ../../base
   - redirect.yaml
-  - backup.yaml
+# Backups are OFF (no backup drive yet; see docs/runbooks/production-gates.md). To turn on
+# nightly backups to the USB drive, run deploy/scripts/prod-host-setup.sh with the drive's
+# partition, then uncomment these two lines and release again.
+# components:
+#   - backups
 patches:
   - target:
       kind: Ingress

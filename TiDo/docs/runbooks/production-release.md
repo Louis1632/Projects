@@ -13,13 +13,10 @@ already running on staging, by digest.
    sudo tailscale up
    ```
 2. In the Tailscale admin console (DNS page), turn on **MagicDNS** and **HTTPS Certificates**.
-3. Plug in the backup drive. It needs an ext4, xfs or btrfs partition (format it first if
-   it doesn't have one; formatting erases the drive). Find the partition with `lsblk`, then:
+3. Let your user fetch the Tailscale certificate:
    ```bash
-   sudo bash deploy/scripts/prod-host-setup.sh /dev/sdXN
+   sudo bash deploy/scripts/prod-host-setup.sh
    ```
-   This lets your user fetch the Tailscale certificate, mounts the drive at
-   `/srv/tido-backups` on every boot, and creates `production/` there for the backup job.
 4. Renew the certificate weekly (Tailscale only renews when it is close to expiry):
    ```bash
    (crontab -l 2>/dev/null; echo "0 4 * * 1 \"$PWD/deploy/scripts/tailscale-cert.sh\" >> \"$HOME/.local/state/tido-cert.log\" 2>&1") | crontab -
@@ -64,18 +61,25 @@ Open the printed link from a device on your tailnet and choose a password.
 ## Checking production
 
 ```bash
-kubectl -n tido-production get pods,cluster,cronjob
+kubectl -n tido-production get pods,cluster
 curl https://<machine>.<tailnet>.ts.net/api/v1/auth/me   # 401 = API reachable, auth enforced; no -k needed
-ls -lh /srv/tido-backups/production                      # nightly dumps
 ```
 
-## Backups and restore drills
+## Backups
 
-See `backup-restore.md`.
+Backups are **off** for now (see `production-gates.md`). To turn them on:
+
+1. Plug in a drive with an ext4, xfs or btrfs partition (formatting a drive erases it). Find
+   the partition with `lsblk`, then run `sudo bash deploy/scripts/prod-host-setup.sh /dev/sdXN`.
+   This mounts it at `/srv/tido-backups` on every boot and creates `production/` there.
+2. Uncomment `components: [backups]` in `deploy/k8s/overlays/production/kustomization.yaml`,
+   commit, and run `release-production.sh`. From then on every release also takes a backup
+   before migrating.
+3. Run a restore drill (`backup-restore.md`) and record it in `production-gates.md`.
 
 ## Rolling back
 
 Check out the previous release commit's `deploy/k8s/overlays/production/kustomization.yaml`
 and run `kubectl apply -k deploy/k8s/overlays/production`. Migrations are forward-only. If the
 release included a migration, roll back only to a version that understands the newer schema,
-or restore the `tido-backup-pre-<release>` dump (see `backup-restore.md`).
+or (with backups on) restore the `tido-backup-pre-<release>` dump (see `backup-restore.md`).

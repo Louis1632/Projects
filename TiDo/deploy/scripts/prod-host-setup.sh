@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # One-time host preparation for TiDo production. Run after Tailscale is installed and logged in.
-# Run as root:  sudo bash deploy/scripts/prod-host-setup.sh /dev/sdXN [username]
+# Run as root:  sudo bash deploy/scripts/prod-host-setup.sh [/dev/sdXN [username]]
 #
 # 1. Lets the given user (default: the sudo caller) fetch this machine's Tailscale
 #    certificate, so certificate renewal needs no root.
+# Steps 2 and 3 run only when a partition is given; re-run with one to add the drive later.
 # 2. Mounts the backup drive partition at /srv/tido-backups on every boot (by UUID, and
 #    boot continues if the drive is unplugged).
 # 3. Creates production/ on the drive for the nightly backup job, with a marker file the
@@ -17,7 +18,7 @@ if [[ $EUID -ne 0 ]]; then
   exit 1
 fi
 
-DEVICE="${1:?usage: sudo bash $0 /dev/sdXN [username]}"
+DEVICE="${1:-}"
 TARGET_USER="${2:-${SUDO_USER:-}}"
 [[ -n "$TARGET_USER" ]] || { echo "Pass the username that runs releases." >&2; exit 1; }
 MOUNT=/srv/tido-backups
@@ -39,6 +40,11 @@ else
 fi
 systemctl restart tailscaled
 for _ in $(seq 1 30); do tailscale status >/dev/null 2>&1 && break; sleep 1; done
+
+if [[ -z "$DEVICE" ]]; then
+  step "Done (no backup drive given; backups stay off)"
+  exit 0
+fi
 
 step "Mounting ${DEVICE} at ${MOUNT}"
 [[ -b "$DEVICE" ]] || fail "${DEVICE} is not a block device"

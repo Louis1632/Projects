@@ -1,5 +1,5 @@
 # Nightly logical backup of the production database onto the USB backup drive.
-# deploy/scripts/backup-drive-setup.sh mounts the drive at /srv/tido-backups and creates
+# deploy/scripts/prod-host-setup.sh mounts the drive at /srv/tido-backups and creates
 # production/ with a marker file. If the drive is missing, the job fails instead of
 # quietly writing to the internal disk.
 apiVersion: v1

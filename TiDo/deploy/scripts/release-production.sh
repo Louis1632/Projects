@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Promotes the release running on staging to production:
 #   check staging → pin its digests and the Tailscale hostname in Git → certificate →
-#   back up the current database → migrate → roll out.
+#   back up the current database (when backups are on) → migrate → roll out.
 # Nothing is rebuilt: production runs the exact image bytes that were tested on staging.
 # Usage: deploy/scripts/release-production.sh
 source "$(dirname "$0")/lib.sh"
@@ -35,10 +35,17 @@ RELEASE="$(docker_cmd image inspect --format '{{index .Config.Labels "org.openco
 [[ -n "$RELEASE" ]] || fail "could not read the release revision from ${API_IMAGE}"
 echo "Promoting ${RELEASE}"
 
-step "Checking the backup drive"
-[[ -f "${BACKUP_DIR}/.tido-backup-drive" ]] \
-  || fail "the backup drive is not mounted at ${BACKUP_DIR%/*} (sudo bash deploy/scripts/prod-host-setup.sh /dev/sdXN)"
-df -h "${BACKUP_DIR%/*}" | tail -1
+# Backups are an optional component of the production overlay (see its kustomization.yaml).
+if kubectl kustomize "$PROD_OVERLAY" | grep -q '^kind: CronJob$'; then
+  BACKUPS=on
+  step "Checking the backup drive"
+  [[ -f "${BACKUP_DIR}/.tido-backup-drive" ]] \
+    || fail "the backup drive is not mounted at ${BACKUP_DIR%/*} (sudo bash deploy/scripts/prod-host-setup.sh /dev/sdXN)"
+  df -h "${BACKUP_DIR%/*}" | tail -1
+else
+  BACKUPS=off
+  step "Backups are OFF: nothing can undo a bad migration or a failed disk (docs/runbooks/production-gates.md)"
+fi
 
 HOST="$(tailscale_host)"
 step "Pinning digests and hostname ${HOST} in deploy/k8s/overlays/production"
@@ -66,7 +73,7 @@ step "Installing the Tailscale certificate for ${HOST}"
 "$TIDO_ROOT/deploy/scripts/tailscale-cert.sh"
 
 # A dump taken just before migrating, so a bad migration can be undone by restoring it.
-if kubectl -n "$PROD_NAMESPACE" get cronjob tido-backup >/dev/null 2>&1 \
+if [[ "$BACKUPS" == on ]] \
   && kubectl -n "$PROD_NAMESPACE" get secret tido-db-app >/dev/null 2>&1; then
   step "Backing up the production database before migrating"
   kubectl -n "$PROD_NAMESPACE" delete job "tido-backup-pre-${RELEASE}" --ignore-not-found >/dev/null
