@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 # Build from the TiDo directory:  docker build -f apps/web/Dockerfile -t tido-web .
-FROM node:22-alpine@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914 AS build
+FROM node:25-alpine@sha256:bdf2cca6fe3dabd014ea60163eca3f0f7015fbd5c7ee1b0e9ccb4ced6eb02ef4 AS build
 RUN npm install --global --no-fund --no-audit pnpm@12.16.1
 WORKDIR /repo
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json ./
