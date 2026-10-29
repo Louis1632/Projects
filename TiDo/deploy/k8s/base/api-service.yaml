@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: tido-api
+  labels:
+    tido.io/phase: platform
+spec:
+  selector:
+    app.kubernetes.io/name: tido-api
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http

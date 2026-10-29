@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tido-staging
+  labels:
+    app.kubernetes.io/part-of: tido
+    tido.io/environment: staging
+    tido.io/phase: platform
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tido-api-config
+  labels:
+    tido.io/phase: platform
+data:
+  NODE_ENV: production
+  API_PORT: '3000'
+  WEB_ORIGIN: https://tido-staging.home.arpa
+  COOKIE_SECURE: 'true'
+  SESSION_COOKIE_NAME: __Host-tido_session
+  TRUST_PROXY: 'true'
+  WORKSPACE_TIMEZONE: Africa/Johannesburg
+  LOG_LEVEL: info

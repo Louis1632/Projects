@@ -1,0 +1,31 @@
+# Production is intentionally NOT released yet. Before applying this overlay:
+#   - publish images to a TLS-protected, authenticated registry and pin their digests here
+#   - expose the app only through trusted TLS (real certificate, real hostname)
+#   - configure off-host PostgreSQL backups and complete a documented restore drill
+# See docs/runbooks/production-gates.md.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: tido-production
+resources:
+  - namespace.yaml
+  - ../../base
+patches:
+  - target:
+      kind: Ingress
+      name: tido
+    path: ingress-patch.yaml
+  - path: config-patch.yaml
+  - target:
+      kind: Cluster
+      name: tido-db
+    patch: |-
+      - op: replace
+        path: /spec/storage/size
+        value: 20Gi
+images:
+  - name: tido-api
+    newName: registry.example.com/tido/api
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - name: tido-web
+    newName: registry.example.com/tido/web
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000

@@ -1,0 +1,27 @@
+# CloudNativePG creates the `tido-db-app` secret (keys: uri, username, password, …)
+# that the API and migration job read.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: tido-db
+  labels:
+    tido.io/phase: platform
+spec:
+  instances: 1
+  imageName: ghcr.io/cloudnative-pg/postgresql:17
+  storage:
+    size: 10Gi
+  bootstrap:
+    initdb:
+      database: tido
+      owner: tido
+  postgresql:
+    parameters:
+      max_connections: '100'
+      timezone: UTC
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
