@@ -24,7 +24,7 @@ deploy/scripts/registry.sh up      # temporary registry on 127.0.0.1:5000
 
 Staging is served over Tailscale (see [staging-release.md](staging-release.md)), so it also
 needs `sudo bash deploy/scripts/prod-host-setup.sh`, which lets you fetch Tailscale
-certificates without sudo. It needs Traefik's port 8443 too, from `scripts/install.sh traefik` in
+certificates without sudo and keeps other tailnet devices' real addresses (TIDO-SEC-012). It needs Traefik's port 8443 too, from `scripts/install.sh traefik` in
 `Louis1632/homelab-platform`.
 
 ## Kubernetes access

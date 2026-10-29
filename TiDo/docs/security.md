@@ -64,6 +64,36 @@ The baseline, recorded on 2026-10-29 by the first review, so later changes don't
 
 ## Entries
 
+### TIDO-SEC-012: The tailnet allow-list refused every device except the PC itself
+
+_2026-10-30 · Medium · Fixed (with HOMELAB-SEC-009)_
+
+**What was wrong:** opening staging on a phone with Tailscale on gave 403 Forbidden, and so did
+production. Tailscale on the PC had source NAT on (its default, `NoSNAT: false`). Traffic from
+other tailnet devices that it forwards into a pod, which includes Traefik's hostPorts, left with
+the PC's pod-network address instead of the device's. The `tailnet-only` allow-list
+(TIDO-SEC-003) saw no Tailscale address and refused it. Requests from the PC itself aren't
+forwarded, so every check run on the PC passed.
+
+**Why it mattered:** the control failed closed, so nothing was exposed, but TiDo was unusable from
+every device except the PC. Production had been unreachable from phones since Traefik moved to
+hostPorts (HOMELAB-SEC-002). The API's logs confirm it: in the 24 hours before the fix, the only
+client address production saw was the PC's own (`100.85.196.89`). Had the allow-list been
+written the other way round (block a few ranges, allow the rest), the same rewrite would have
+let everything through.
+
+**Fix:** `tailscale set --snat-subnet-routes=false`. That NAT only matters for advertised subnet
+routes, which this PC doesn't have. `deploy/scripts/prod-host-setup.sh` now runs it, so a rebuilt
+PC gets it too.
+
+**How it was verified (2026-10-30):** `tailscale debug prefs` shows `NoSNAT: true`. The phone
+(`100.73.90.7`) loads staging and production, and both APIs log requests from that address.
+Wi-Fi requests to both ports still get 403 (TIDO-SEC-011).
+
+**Lesson:** test an allow-list from a device that should be allowed, not just from the host
+itself. Every hop that can rewrite addresses (NAT, proxies, load balancers) sits between the
+client and the check. And a check that only ever says "no" passes every security test.
+
 ### TIDO-SEC-011: Staging is reachable only over Tailscale, with a trusted certificate
 
 _2026-10-30 · Low · Fixed (with HOMELAB-SEC-008)_
@@ -104,8 +134,9 @@ The staging overlay renders the new host, port, cookie name and middleware. Agai
 - A sign-in POST carrying the old origin (`https://tido-staging.home.arpa`) gets 403 from the
   CSRF check, and the new origin gets past it (400, for the empty body).
 
-Still to confirm by hand: staging loads on a phone with Tailscale on, the phone gets 403 with
-Tailscale off, and signing in to staging leaves production signed in in the same browser.
+From a phone with Tailscale on, staging first answered 403. That turned out to be Tailscale's
+source NAT (TIDO-SEC-012). After that fix, the phone loads staging. Still to confirm by hand:
+signing in to staging leaves production signed in in the same browser.
 
 **Lesson:** "only this machine can reach it" was true of the name, not of the service. Give every
 environment the same access control as production, even a test one. And sharing a host name
@@ -300,6 +331,10 @@ each of the PC's addresses gave:
   Tailscale address.
 
 A check from a phone (Tailscale off: 403; on: TiDo loads) confirms it from outside the PC.
+
+_Correction (2026-10-30):_ the "on: TiDo loads" result can't have come from this release. Since
+HOMELAB-SEC-002, Tailscale's source NAT made every other tailnet device look internal, so phones
+got 403 until TIDO-SEC-012 fixed it.
 
 **Lesson:** a hostname isn't access control. "Private" has to be enforced where traffic
 arrives: firewall, listener address or allow-list.
