@@ -1,5 +1,5 @@
-# Prometheus (namespace `monitoring`, see docs/runbooks/observability.md) scrapes the API's
-# /metrics port and the PostgreSQL exporter. These add to the policies in network-policy.yaml.
+# Prometheus (namespace `monitoring`, the shared stack in Louis1632/homelab-platform) scrapes
+# the API's /metrics port and the PostgreSQL exporter. These add to the policies in network-policy.yaml.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
