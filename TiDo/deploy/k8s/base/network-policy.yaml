@@ -50,7 +50,7 @@ spec:
         - protocol: TCP
           port: 3000
 ---
-# PostgreSQL accepts connections only from the API and migration jobs, plus the
+# PostgreSQL accepts connections only from the API, migration, bootstrap and backup jobs, plus the
 # CloudNativePG operator's status checks.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -69,7 +69,7 @@ spec:
             matchExpressions:
               - key: app.kubernetes.io/name
                 operator: In
-                values: [tido-api, tido-migrate, tido-bootstrap]
+                values: [tido-api, tido-migrate, tido-bootstrap, tido-backup]
       ports:
         - protocol: TCP
           port: 5432

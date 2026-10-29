@@ -1,14 +1,16 @@
-# Production is intentionally NOT released yet. Before applying this overlay:
-#   - publish images to a TLS-protected, authenticated registry and pin their digests here
-#   - expose the app only through trusted TLS (real certificate, real hostname)
-#   - configure off-host PostgreSQL backups and complete a documented restore drill
-# See docs/runbooks/production-gates.md.
+# Production: reachable only over Tailscale, with a trusted certificate for this machine's
+# Tailscale name, and nightly backups to the USB backup drive.
+# Released with deploy/scripts/release-production.sh, which promotes the image digests
+# already running on staging and writes the hostname below. See
+# docs/runbooks/production-release.md and docs/runbooks/production-gates.md.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: tido-production
 resources:
   - namespace.yaml
   - ../../base
+  - redirect.yaml
+  - backup.yaml
 patches:
   - target:
       kind: Ingress
@@ -22,10 +24,11 @@ patches:
       - op: replace
         path: /spec/storage/size
         value: 20Gi
+# Written by deploy/scripts/release-production.sh: the digests promoted from staging.
 images:
   - name: tido-api
-    newName: registry.example.com/tido/api
+    newName: localhost:5000/tido/api
     digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
   - name: tido-web
-    newName: registry.example.com/tido/web
+    newName: localhost:5000/tido/web
     digest: sha256:0000000000000000000000000000000000000000000000000000000000000000

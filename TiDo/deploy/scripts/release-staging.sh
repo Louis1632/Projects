@@ -45,14 +45,8 @@ API_IMAGE="${REGISTRY}/tido/api@${API_DIGEST}"
 echo "api: ${API_IMAGE}"
 echo "web: ${REGISTRY}/tido/web@${WEB_DIGEST}"
 
-step "Applying platform resources (namespace, config, database, network policies, ingress)"
-kubectl apply -k "$OVERLAY" -l tido.io/phase=platform
-
-if ! kubectl -n "$NAMESPACE" get secret tido-api-secrets >/dev/null 2>&1; then
-  step "Creating the session secret (stored only in the cluster)"
-  kubectl -n "$NAMESPACE" create secret generic tido-api-secrets \
-    --from-literal=session-secret="$(openssl rand -base64 48)"
-fi
+apply_platform "$OVERLAY"
+ensure_session_secret "$NAMESPACE"
 if ! kubectl -n "$NAMESPACE" get secret tido-tls >/dev/null 2>&1; then
   step "Creating a self-signed TLS certificate for tido-staging.home.arpa (staging only)"
   tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
@@ -60,31 +54,7 @@ if ! kubectl -n "$NAMESPACE" get secret tido-tls >/dev/null 2>&1; then
     -addext "subjectAltName=DNS:tido-staging.home.arpa" -keyout "$tmp/tls.key" -out "$tmp/tls.crt" 2>/dev/null
   kubectl -n "$NAMESPACE" create secret tls tido-tls --cert="$tmp/tls.crt" --key="$tmp/tls.key"
 fi
-
-step "Waiting for PostgreSQL (CloudNativePG cluster tido-db)"
-for _ in $(seq 1 60); do
-  kubectl -n "$NAMESPACE" get secret tido-db-app >/dev/null 2>&1 && break
-  sleep 5
-done
-kubectl -n "$NAMESPACE" wait --for=condition=Ready cluster/tido-db --timeout=600s
-
-step "Running database migrations (job tido-migrate-${RELEASE})"
-kubectl -n "$NAMESPACE" delete job "tido-migrate-${RELEASE}" --ignore-not-found >/dev/null
-sed -e "s|__RELEASE__|${RELEASE}|g" -e "s|__API_IMAGE__|${API_IMAGE}|g" deploy/k8s/jobs/migrate-job.yaml \
-  | kubectl -n "$NAMESPACE" apply -f -
-if ! kubectl -n "$NAMESPACE" wait --for=condition=complete "job/tido-migrate-${RELEASE}" --timeout=300s; then
-  kubectl -n "$NAMESPACE" logs "job/tido-migrate-${RELEASE}" || true
-  fail "migrations failed; the running app was not changed"
-fi
-kubectl -n "$NAMESPACE" logs "job/tido-migrate-${RELEASE}"
-
-step "Rolling out the API and web app"
-kubectl apply -k "$OVERLAY"
-kubectl -n "$NAMESPACE" rollout status deployment/tido-api --timeout=300s
-kubectl -n "$NAMESPACE" rollout status deployment/tido-web --timeout=300s
-
-step "Released ${RELEASE} to ${NAMESPACE}"
-kubectl -n "$NAMESPACE" get pods -o wide
+migrate_and_roll_out "$OVERLAY" "$NAMESPACE" "$RELEASE" "$API_IMAGE"
 echo
 echo "Open https://tido-staging.home.arpa (self-signed certificate)."
 echo "Commit the pinned digests:  git add deploy/k8s/overlays/staging/kustomization.yaml && git commit -m 'Release ${RELEASE} to staging'"

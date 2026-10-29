@@ -62,5 +62,7 @@ and container builds. CI validates only; it never publishes or deploys.
 ## Deployment
 
 Staging runs on single-node K3s with CloudNativePG, released manually by exact image digest —
-see `docs/runbooks/staging-release.md`. Production manifests exist but are **blocked** until the
-gates in `docs/runbooks/production-gates.md` are met.
+see `docs/runbooks/staging-release.md`. Production is private (reachable only over Tailscale,
+with a trusted certificate and nightly backups to a USB drive) and promotes the exact images
+tested on staging — see `docs/runbooks/production-release.md` and
+`docs/runbooks/production-gates.md`.
