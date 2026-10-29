@@ -29,7 +29,7 @@ export async function createSession(
   const expiresAt = new Date(Date.now() + SESSION_ABSOLUTE_MS);
   await exec.insert(sessions).values({
     userId,
-    tokenHash: hashToken(token, secret),
+    tokenHash: hashToken(token, secret, 'session'),
     expiresAt,
     userAgent: meta.userAgent?.slice(0, 500),
     ipAddress: meta.ip,
@@ -61,7 +61,7 @@ export async function resolveSession(
     .innerJoin(workspaces, eq(workspaces.id, workspaceMembers.workspaceId))
     .where(
       and(
-        eq(sessions.tokenHash, hashToken(token, secret)),
+        eq(sessions.tokenHash, hashToken(token, secret, 'session')),
         isNull(sessions.revokedAt),
         gt(sessions.expiresAt, now),
         gt(sessions.lastSeenAt, new Date(now.getTime() - SESSION_IDLE_MS)),

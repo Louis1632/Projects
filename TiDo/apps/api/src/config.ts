@@ -16,7 +16,19 @@ const envSchema = z
     SESSION_COOKIE_NAME: z.string().default('tido_session'),
     COOKIE_SECURE: booleanString.default(false),
     WORKSPACE_TIMEZONE: z.string().default('Africa/Johannesburg'),
-    TRUST_PROXY: booleanString.default(false),
+    // true/false, or the number of proxy hops to trust. Trusting a fixed count (Traefik is one hop)
+    // stops a client from choosing its own IP with a forged X-Forwarded-For.
+    TRUST_PROXY: z
+      .union([
+        z.enum(['true', 'false']).transform((value) => value === 'true'),
+        z.coerce
+          .number()
+          .int()
+          .min(0)
+          .max(10)
+          .transform((hops) => (hops === 0 ? false : hops)),
+      ])
+      .default(false),
     LOG_LEVEL: z
       .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
       .default('info'),
@@ -51,7 +63,7 @@ export interface Config {
   sessionCookieName: string;
   cookieSecure: boolean;
   workspaceTimezone: string;
-  trustProxy: boolean;
+  trustProxy: boolean | number;
   logLevel: string;
   docs: boolean;
   rateLimitMax: number;

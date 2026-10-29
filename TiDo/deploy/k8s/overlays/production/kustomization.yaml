@@ -10,6 +10,7 @@ resources:
   - namespace.yaml
   - ../../base
   - redirect.yaml
+  - tailnet-only.yaml
 # Backups are OFF (no backup drive yet; see docs/runbooks/production-gates.md). To turn on
 # nightly backups to the USB drive, run deploy/scripts/prod-host-setup.sh with the drive's
 # partition, then uncomment these two lines and release again.

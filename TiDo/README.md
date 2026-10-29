@@ -67,6 +67,7 @@ Be careful in production: there are no backups yet (`docs/runbooks/production-ga
 | Pods           | `kubectl get pods -n tido-staging` / `-n tido-production`, or Portainer            |
 | Runbooks       | `docs/runbooks/` (releases, production, backups, observability)                    |
 | New PC         | Rebuild everything from the repos: homelab-platform `docs/rebuild-from-scratch.md` |
+| Security log   | [`docs/security.md`](docs/security.md): every finding, fix and lesson              |
 
 It is a modular TypeScript monolith:
 
@@ -78,6 +79,7 @@ It is a modular TypeScript monolith:
 | `packages/db`        | Drizzle schema, committed SQL migrations, migrate and bootstrap utilities |
 | `deploy`             | Dockerfiles' nginx config, Kustomize manifests, release scripts           |
 | `docs/runbooks`      | Step-by-step operations guides                                            |
+| `docs/security.md`   | Security log: findings, fixes, accepted risks and lessons                 |
 
 ## How it fits together
 

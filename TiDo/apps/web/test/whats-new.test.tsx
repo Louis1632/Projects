@@ -40,7 +40,7 @@ describe("what's new", () => {
     renderApp('/whats-new');
     expect(await screen.findByRole('heading', { name: "What's new" })).toBeInTheDocument();
     expect(screen.getByText(`TiDo ${buildInfo.version}`)).toBeInTheDocument();
-    const current = screen.getByRole('article');
+    const current = screen.getAllByRole('article')[0]!;
     expect(
       within(current).getByRole('heading', { name: `Version ${releases[0]!.version}` }),
     ).toBeInTheDocument();

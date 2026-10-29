@@ -4,3 +4,6 @@
 - op: replace
   path: /spec/rules/0/host
   value: synisterpc.tailbe657c.ts.net
+- op: add
+  path: /metadata/annotations/traefik.ingress.kubernetes.io~1router.middlewares
+  value: tido-production-tailnet-only@kubernetescrd
