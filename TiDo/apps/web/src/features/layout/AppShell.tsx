@@ -5,6 +5,7 @@ import type { SessionUser, Subtask, Task } from '@tido/contracts';
 import { api } from '../../lib/api';
 import { todayIn } from '../../lib/dates';
 import { useDashboard, useWorkspaceMutation } from '../../lib/queries';
+import { buildInfo, useNewerBuildAvailable, useVersionSeen } from '../about/version';
 import { Brand, LoadingPage, useCurrentUser } from '../auth/RequireSession';
 import { TaskEditor } from '../tasks/TaskEditor';
 
@@ -17,6 +18,7 @@ export interface ShellContext {
   search: string;
   openEditor: (target: EditorTarget) => void;
   notify: (message: string) => void;
+  markVersionSeen: () => void;
 }
 
 export const useShell = () => useOutletContext<ShellContext>();
@@ -32,6 +34,8 @@ export function AppShell() {
   const [newList, setNewList] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const today = todayIn(user.workspace.timezone);
+  const version = useVersionSeen();
+  const newerBuild = useNewerBuildAvailable();
 
   const createList = useWorkspaceMutation((name: string) => api.createProject(name));
 
@@ -60,7 +64,14 @@ export function AppShell() {
   if (dashboard.isError)
     return <LoadingPage message="TiDo could not load. Check that the API is running." />;
 
-  const context: ShellContext = { user, today, search, openEditor: setEditor, notify: setNotice };
+  const context: ShellContext = {
+    user,
+    today,
+    search,
+    openEditor: setEditor,
+    notify: setNotice,
+    markVersionSeen: version.markSeen,
+  };
   const navClass = ({ isActive }: { isActive: boolean }) =>
     isActive ? 'nav-item active' : 'nav-item';
   const listClass = ({ isActive }: { isActive: boolean }) =>
@@ -117,6 +128,15 @@ export function AppShell() {
           />
         </form>
         <div className="sidebar-spacer" />
+        <Link to="/whats-new" className="version-link" onClick={closeMenu}>
+          TiDo v{buildInfo.version}
+          {version.unseen && (
+            <>
+              {' '}
+              <span className="version-new">New</span>
+            </>
+          )}
+        </Link>
         <div className="user-menu">
           <div className="avatar" aria-hidden="true">
             {user.displayName.slice(0, 1).toUpperCase()}
@@ -153,6 +173,14 @@ export function AppShell() {
           </button>
         </header>
 
+        {newerBuild && (
+          <div className="update-banner" role="status">
+            <span>A new version of TiDo is available.</span>
+            <button className="secondary-button" onClick={() => window.location.reload()}>
+              Reload
+            </button>
+          </div>
+        )}
         {notice && (
           <div className="notice" role="alert">
             <span>{notice}</span>

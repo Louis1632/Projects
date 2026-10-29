@@ -12,7 +12,9 @@ RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile --filter "@tido/web..."
 COPY packages ./packages
 COPY apps/web ./apps/web
-RUN pnpm --filter @tido/web build
+# Shown on the What's new page and in version.json; .git is not in the build context.
+ARG TIDO_REVISION=unknown
+RUN TIDO_REVISION="$TIDO_REVISION" pnpm --filter @tido/web build
 
 # Runs as uid 101 on port 8080; needs only /tmp writable.
 FROM nginxinc/nginx-unprivileged:1.30-alpine AS runtime

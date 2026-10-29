@@ -16,9 +16,10 @@ kubectl get crd clusters.postgresql.cnpg.io >/dev/null || fail "CloudNativePG is
 
 build_and_push() {
   local name="$1" image="${REGISTRY}/tido/$1:${RELEASE}"
+  shift
   step "Building ${image}" >&2
   docker_cmd buildx build --file "apps/${name}/Dockerfile" --tag "$image" \
-    --label "org.opencontainers.image.revision=${RELEASE}" --load . >&2
+    --label "org.opencontainers.image.revision=${RELEASE}" "$@" --load . >&2
   docker_cmd push "$image" >&2
   # The registry digest identifies exactly these bytes; tags can be moved, digests cannot.
   docker_cmd inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$image" \
@@ -26,7 +27,7 @@ build_and_push() {
 }
 
 API_DIGEST="$(build_and_push api)"
-WEB_DIGEST="$(build_and_push web)"
+WEB_DIGEST="$(build_and_push web --build-arg "TIDO_REVISION=${RELEASE}")"
 [[ "$API_DIGEST" == sha256:* && "$WEB_DIGEST" == sha256:* ]] || fail "could not read image digests"
 
 step "Pinning digests in deploy/k8s/overlays/staging/kustomization.yaml"

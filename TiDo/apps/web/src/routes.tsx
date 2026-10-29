@@ -1,4 +1,5 @@
 import { Navigate, type RouteObject } from 'react-router';
+import { WhatsNewPage } from './features/about/WhatsNewPage';
 import { AccountPage } from './features/account/AccountPage';
 import { AcceptLinkPage } from './features/auth/AcceptLinkPage';
 import { LoginPage } from './features/auth/LoginPage';
@@ -33,6 +34,7 @@ export const routes: RouteObject[] = [
         ),
       },
       { path: 'account', element: <AccountPage /> },
+      { path: 'whats-new', element: <WhatsNewPage /> },
     ],
   },
   { path: '*', element: <Navigate to="/tasks" replace /> },

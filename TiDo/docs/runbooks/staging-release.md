@@ -3,6 +3,17 @@
 Prerequisites: host setup done, CloudNativePG installed, registry running
 (`deploy/scripts/registry.sh up`), and all changes committed.
 
+## Release notes
+
+If the release changes anything people will notice, bump `version` in the root `package.json`
+and add an entry at the top of `apps/web/src/features/about/releases.ts`, written for the
+people who use TiDo. The web tests fail if the two disagree. The app shows the notes on its
+**What's new** page, marks the version **New** in the sidebar until each person has seen it,
+and offers open tabs a reload once the new build is live. Each build's Git commit is shown
+as its build number.
+
+## Running the release
+
 ```bash
 deploy/scripts/release-staging.sh
 ```

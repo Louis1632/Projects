@@ -444,6 +444,29 @@ legend {
   flex: 1;
 }
 
+.version-link {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.65rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-decoration: none;
+}
+
+.version-link:hover {
+  color: var(--teal-strong);
+}
+
+.version-new {
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: var(--teal);
+  color: var(--surface);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
 .user-menu {
   display: flex;
   align-items: center;
@@ -533,6 +556,19 @@ legend {
   border-radius: 10px;
   padding: 0.5rem 0.5rem 0.5rem 1rem;
   margin-bottom: 1rem;
+}
+
+.update-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  background: var(--teal-soft);
+  color: var(--teal-strong);
+  border-radius: 10px;
+  padding: 0.5rem 0.5rem 0.5rem 1rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
 }
 
 /* Screens ------------------------------------------------------------- */
@@ -1213,6 +1249,7 @@ legend {
   .sidebar:not(.open) .sidebar-body,
   .sidebar:not(.open) .new-list-form,
   .sidebar:not(.open) .user-menu,
+  .sidebar:not(.open) .version-link,
   .sidebar:not(.open) .sidebar-spacer {
     display: none;
   }
@@ -1253,4 +1290,72 @@ legend {
   .task-modal {
     padding: 1rem;
   }
+}
+
+/* What's new ---------------------------------------------------------- */
+
+.release-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.release-heading h2 {
+  margin: 0;
+}
+
+.release-heading time {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.release-current {
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: var(--teal-soft);
+  color: var(--teal-strong);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.release-changes {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.85rem 0 0.25rem;
+  padding: 0;
+  list-style: none;
+}
+
+.release-changes li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+
+.change-kind {
+  flex-shrink: 0;
+  min-width: 4.75rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.change-kind.new {
+  background: var(--teal-soft);
+  color: var(--teal-strong);
+}
+
+.change-kind.improved {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.change-kind.fixed {
+  background: var(--success-soft);
+  color: var(--success);
 }
