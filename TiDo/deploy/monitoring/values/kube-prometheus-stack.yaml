@@ -1,0 +1,90 @@
+# kube-prometheus-stack (Prometheus, Alertmanager, Grafana, node-exporter, kube-state-metrics)
+# sized for one K3s host. Installed as release `kps` in namespace `monitoring`;
+# see docs/runbooks/observability.md.
+fullnameOverride: kps
+
+# K3s runs the scheduler, controller manager and proxy inside the k3s process and keeps its
+# datastore in SQLite, so there are no separate endpoints to scrape. Without this, Prometheus
+# shows them as permanently down and their alerts fire.
+kubeEtcd:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeProxy:
+  enabled: false
+defaultRules:
+  rules:
+    etcd: false
+    kubeControllerManager: false
+    kubeSchedulerAlerting: false
+    kubeSchedulerRecording: false
+    kubeProxy: false
+    windows: false
+
+prometheus:
+  prometheusSpec:
+    retention: 7d
+    retentionSize: 8GB
+    # Pick up every PodMonitor, ServiceMonitor and PrometheusRule in the cluster, not only the
+    # ones labelled for this Helm release (the TiDo ones live in deploy/monitoring/k8s).
+    podMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    probeSelectorNilUsesHelmValues: false
+    scrapeConfigSelectorNilUsesHelmValues: false
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        memory: 2Gi
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: local-path
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 10Gi
+
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        memory: 128Mi
+
+grafana:
+  # The admin password is generated into the `kps-grafana` secret (key admin-password).
+  persistence:
+    enabled: true
+    storageClassName: local-path
+    size: 2Gi
+  defaultDashboardsTimezone: browser
+  grafana.ini:
+    server:
+      root_url: https://grafana.home.arpa
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    annotations:
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+      traefik.ingress.kubernetes.io/router.tls: 'true'
+    hosts: [grafana.home.arpa]
+  additionalDataSources:
+    - name: Loki
+      uid: loki
+      type: loki
+      access: proxy
+      url: http://loki.monitoring.svc:3100
+  # Grafana settles around 350Mi with the bundled dashboards; headroom for imports and big queries.
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      memory: 1Gi

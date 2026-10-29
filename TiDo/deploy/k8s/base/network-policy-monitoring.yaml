@@ -1,0 +1,41 @@
+# Prometheus (namespace `monitoring`, see docs/runbooks/observability.md) scrapes the API's
+# /metrics port and the PostgreSQL exporter. These add to the policies in network-policy.yaml.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: tido-api-metrics
+  labels:
+    tido.io/phase: platform
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: tido-api
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9464
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: tido-db-metrics
+  labels:
+    tido.io/phase: platform
+spec:
+  podSelector:
+    matchLabels:
+      cnpg.io/cluster: tido-db
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9187

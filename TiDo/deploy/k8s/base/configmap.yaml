@@ -13,3 +13,4 @@ data:
   TRUST_PROXY: 'true'
   WORKSPACE_TIMEZONE: Africa/Johannesburg
   LOG_LEVEL: info
+  METRICS_PORT: '9464'

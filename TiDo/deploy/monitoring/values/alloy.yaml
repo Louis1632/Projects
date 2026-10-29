@@ -1,0 +1,83 @@
+# Grafana Alloy: reads every pod's logs through the Kubernetes API and ships them to Loki.
+# Installed as release `alloy` in namespace `monitoring`; see docs/runbooks/observability.md.
+controller:
+  # One collector is enough for one node. With more nodes, switch to a daemonset and turn on
+  # alloy.clustering so the nodes share the work.
+  type: deployment
+  replicas: 1
+
+serviceMonitor:
+  enabled: true
+
+alloy:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 512Mi
+  configMap:
+    content: |
+      // 1. Find every pod in the cluster.
+      discovery.kubernetes "pods" {
+        role = "pod"
+      }
+
+      // 2. Turn Kubernetes metadata into Loki labels. Keep labels few and low-cardinality:
+      //    each unique label set is a separate stream. Request IDs, user IDs and the like stay
+      //    in the log line and are queried with `| json`.
+      discovery.relabel "pods" {
+        targets = discovery.kubernetes.pods.targets
+
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          target_label  = "container"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+          target_label  = "app"
+        }
+      }
+
+      // 3. Tail the logs.
+      loki.source.kubernetes "pods" {
+        targets    = discovery.relabel.pods.output
+        forward_to = [loki.process.pods.receiver]
+      }
+
+      // 4. The TiDo API logs pino JSON with numeric levels (30 = info, 50 = error).
+      //    Turn the level into a readable `level` label so Grafana colours the lines and
+      //    `{app="tido-api", level="error"}` works.
+      loki.process "pods" {
+        stage.match {
+          selector = "{app=\"tido-api\"}"
+
+          stage.json {
+            expressions = { level = "level" }
+          }
+          stage.template {
+            source   = "level"
+            template = `{{ if eq .Value "60" }}fatal{{ else if eq .Value "50" }}error{{ else if eq .Value "40" }}warn{{ else if eq .Value "30" }}info{{ else if eq .Value "20" }}debug{{ else if eq .Value "10" }}trace{{ else }}{{ .Value }}{{ end }}`
+          }
+          stage.labels {
+            values = { level = "" }
+          }
+        }
+
+        forward_to = [loki.write.default.receiver]
+      }
+
+      // 5. Send to Loki.
+      loki.write "default" {
+        endpoint {
+          url = "http://loki.monitoring.svc:3100/loki/api/v1/push"
+        }
+      }

@@ -1,0 +1,63 @@
+# Loki in monolithic mode: one pod, logs on a local-path volume, 7 days kept.
+# Installed as release `loki` in namespace `monitoring`; see docs/runbooks/observability.md.
+deploymentMode: Monolithic
+
+loki:
+  # Single tenant: no X-Scope-OrgID header needed from Alloy or Grafana.
+  auth_enabled: false
+  commonConfig:
+    replication_factor: 1
+  storage:
+    type: filesystem
+  schemaConfig:
+    configs:
+      - from: '2026-10-01'
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: index_
+          period: 24h
+  limits_config:
+    retention_period: 168h
+  compactor:
+    retention_enabled: true
+    delete_request_store: filesystem
+
+singleBinary:
+  replicas: 1
+  persistence:
+    enabled: true
+    storageClass: local-path
+    size: 10Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+# The chart's scalable targets default to running; monolithic mode needs them at zero.
+backend:
+  replicas: 0
+read:
+  replicas: 0
+write:
+  replicas: 0
+
+# Prometheus scrapes Loki's own metrics.
+monitoring:
+  serviceMonitor:
+    enabled: true
+
+# Off by default here: the memcached caches request several GB of memory, the gateway is an
+# extra nginx in front of a single pod, and the canary and Helm test are for clusters.
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false
+gateway:
+  enabled: false
+lokiCanary:
+  enabled: false
+test:
+  enabled: false

@@ -7,6 +7,7 @@ import {
   type ZodTypeProvider,
 } from 'fastify-type-provider-zod';
 import { sql } from 'drizzle-orm';
+import { Registry } from 'prom-client';
 import type { Database } from '@tido/db';
 import type { Config } from './config';
 import { authRoutes } from './modules/auth/routes';
@@ -17,6 +18,7 @@ import { projectRoutes } from './modules/projects/routes';
 import { taskRoutes } from './modules/tasks/routes';
 import { authPlugin } from './plugins/auth';
 import { errorsPlugin } from './plugins/errors';
+import { metricsPlugin } from './plugins/metrics';
 import { securityPlugin } from './plugins/security';
 import './types';
 
@@ -24,9 +26,10 @@ export interface BuildAppOptions {
   config: Config;
   db: Database;
   logger?: FastifyServerOptions['logger'];
+  metricsRegistry?: Registry;
 }
 
-export async function buildApp({ config, db, logger }: BuildAppOptions) {
+export async function buildApp({ config, db, logger, metricsRegistry }: BuildAppOptions) {
   const app = Fastify({
     logger: logger ?? {
       level: config.logLevel,
@@ -42,6 +45,7 @@ export async function buildApp({ config, db, logger }: BuildAppOptions) {
   app.decorate('config', config);
   app.decorate('db', db);
 
+  await app.register(metricsPlugin, { registry: metricsRegistry ?? new Registry() });
   await app.register(errorsPlugin);
   await app.register(securityPlugin);
   await app.register(authPlugin);

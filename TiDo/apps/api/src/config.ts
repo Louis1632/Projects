@@ -23,6 +23,8 @@ const envSchema = z
     API_DOCS: booleanString.optional(),
     RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(300),
     LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(10),
+    // Prometheus /metrics listener; unset means no metrics server.
+    METRICS_PORT: z.coerce.number().int().min(1).max(65_535).optional(),
   })
   .superRefine((env, context) => {
     if (env.NODE_ENV === 'production' && /replace-with/.test(env.SESSION_SECRET)) {
@@ -52,6 +54,7 @@ export interface Config {
   docs: boolean;
   rateLimitMax: number;
   loginRateLimitMax: number;
+  metricsPort: number | undefined;
 }
 
 export function loadConfig(source: NodeJS.ProcessEnv = process.env): Config {
@@ -78,5 +81,6 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): Config {
     docs: env.API_DOCS ?? env.NODE_ENV === 'development',
     rateLimitMax: env.RATE_LIMIT_MAX,
     loginRateLimitMax: env.LOGIN_RATE_LIMIT_MAX,
+    metricsPort: env.METRICS_PORT,
   };
 }

@@ -1,0 +1,54 @@
+# What Prometheus scrapes besides the cluster defaults. A PodMonitor selects pods by label and
+# names the container port to scrape; the Prometheus operator turns it into scrape config.
+# `jobLabel` sets the `job` label from a pod label, so queries read {job="tido-api"}.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: tido-api
+  namespace: monitoring
+spec:
+  jobLabel: app.kubernetes.io/name
+  namespaceSelector:
+    matchNames: [tido-staging, tido-production]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tido-api
+  podMetricsEndpoints:
+    - port: metrics
+      interval: 30s
+---
+# CloudNativePG runs a PostgreSQL exporter in every instance pod (port `metrics`, 9187).
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: tido-db
+  namespace: monitoring
+spec:
+  jobLabel: cnpg.io/cluster
+  namespaceSelector:
+    matchNames: [tido-staging, tido-production]
+  selector:
+    matchLabels:
+      cnpg.io/cluster: tido-db
+      cnpg.io/podRole: instance
+  podMetricsEndpoints:
+    - port: metrics
+      interval: 30s
+---
+# K3s's Traefik already serves Prometheus metrics on its `metrics` port (9100): every request
+# that enters the cluster, by router and service, before it reaches TiDo.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: traefik
+  namespace: monitoring
+spec:
+  jobLabel: app.kubernetes.io/name
+  namespaceSelector:
+    matchNames: [kube-system]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: traefik
+  podMetricsEndpoints:
+    - port: metrics
+      interval: 30s
