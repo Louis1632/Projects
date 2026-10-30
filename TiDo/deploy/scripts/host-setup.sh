@@ -5,7 +5,6 @@
 # 1. Installs Docker Engine, Buildx and Compose from Docker's apt repository.
 # 2. Lets the given user (default: the sudo caller) run docker without sudo.
 # 3. Points K3s at the host-local staging registry on localhost:5000 and restarts K3s.
-# 4. Maps tido-staging.home.arpa to this machine in /etc/hosts.
 # Every step is idempotent, so re-running is safe.
 set -euo pipefail
 
@@ -16,7 +15,6 @@ fi
 
 TARGET_USER="${1:-${SUDO_USER:-}}"
 REGISTRY_HOST="localhost:5000"
-STAGING_HOSTNAME="tido-staging.home.arpa"
 
 step() { printf '\n==> %s\n' "$*"; }
 
@@ -74,14 +72,6 @@ if [[ ! -f "$REGISTRIES" ]] || [[ "$(cat "$REGISTRIES")" != "$DESIRED" ]]; then
   k3s kubectl get nodes
 else
   echo "registries.yaml already up to date."
-fi
-
-step "Mapping ${STAGING_HOSTNAME} to 127.0.0.1"
-if ! grep -qE "[[:space:]]${STAGING_HOSTNAME}([[:space:]]|\$)" /etc/hosts; then
-  printf '127.0.0.1\t%s\n' "$STAGING_HOSTNAME" >> /etc/hosts
-  echo "Added."
-else
-  echo "Already present."
 fi
 
 step "Done"

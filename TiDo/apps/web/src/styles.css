@@ -407,6 +407,44 @@ legend {
   background: var(--surface-2);
 }
 
+.project-item {
+  position: relative;
+}
+
+.project-item .project-link {
+  padding-right: 2.25rem;
+}
+
+/* The archive button shows on hover, over the right end of the list's link. */
+.project-archive {
+  position: absolute;
+  top: 50%;
+  right: 0.3rem;
+  transform: translateY(-50%);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.project-item:hover .project-archive,
+.project-archive:focus-visible {
+  opacity: 1;
+}
+
+.project-archive:hover {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.project-archive svg {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .nav-item.active,
 .project-link.active {
   background: var(--teal-soft);
@@ -642,6 +680,24 @@ legend {
 .project-block {
   display: grid;
   gap: 1rem;
+  min-width: 0;
+}
+
+/* Sections sit side by side as columns; the row scrolls sideways when they do not fit.
+   Positioned so visually hidden labels inside it scroll with it instead of widening the page. */
+.section-columns {
+  position: relative;
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  scroll-snap-type: x proximity;
+}
+
+.section-columns > .section-card {
+  flex: 0 0 min(19rem, 85%);
+  scroll-snap-align: start;
 }
 
 .project-block > h2 {
@@ -666,11 +722,132 @@ legend {
   margin-bottom: 0.75rem;
 }
 
+/* Grip on the left, arrows on the right, and the name centred between them. */
 .section-heading {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr minmax(0, auto) 1fr;
   align-items: center;
+  gap: 0.4rem;
   margin-bottom: 0.4rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+  cursor: grab;
+}
+
+.section-heading h3 {
+  min-width: 0;
+  text-align: center;
+}
+
+.section-heading .row-actions {
+  justify-self: end;
+}
+
+.section-name {
+  background: none;
+  border: none;
+  padding: 0.1rem 0.35rem;
+  border-radius: 6px;
+  font: inherit;
+  color: inherit;
+  overflow-wrap: anywhere;
+  cursor: text;
+}
+
+.section-name:hover {
+  background: var(--surface-2);
+}
+
+.section-rename input {
+  text-align: center;
+  font-weight: 700;
+  padding: 0.25rem 0.4rem;
+}
+
+.add-section-tile {
+  flex: 0 0 3rem;
+  align-self: stretch;
+  min-height: 4rem;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.5rem;
+}
+
+.add-section-tile:hover {
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+.add-section-form {
+  flex: 0 0 min(19rem, 85%);
+  display: grid;
+  gap: 0.6rem;
+}
+
+.add-section-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.section-heading:hover .row-actions,
+.section-heading:focus-within .row-actions {
+  opacity: 1;
+}
+
+.drag-grip {
+  color: var(--muted);
+}
+
+.section-card.dragging,
+.task-row.dragging {
+  opacity: 0.45;
+}
+
+.section-card.drop-target {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 2px var(--teal-soft);
+}
+
+.task-row.drop-before {
+  box-shadow: inset 0 2px 0 var(--teal);
+}
+
+.task-row[draggable='true'] {
+  cursor: grab;
+}
+
+.add-task {
+  margin-top: 0.4rem;
+}
+
+.add-task-form {
+  margin-top: 0.4rem;
+}
+
+.add-subtask {
+  grid-column: 2 / -1;
+  justify-self: start;
+  font-size: 0.8rem;
+  padding: 0.1rem 0.3rem;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.task-row:hover .add-subtask,
+.add-subtask:focus-visible {
+  opacity: 1;
+}
+
+.add-subtask-form {
+  grid-column: 2 / -1;
+}
+
+.add-subtask-form input {
+  font-size: 0.875rem;
+  padding: 0.3rem 0.5rem;
 }
 
 .task-row {
@@ -781,6 +958,10 @@ legend {
   opacity: 1;
 }
 
+.row-actions .icon-button:disabled {
+  visibility: hidden;
+}
+
 .subtask-list {
   grid-column: 2 / -1;
   list-style: none;
@@ -790,11 +971,20 @@ legend {
   gap: 0.15rem;
 }
 
+.task-row .subtask-list {
+  gap: 0;
+  border-top: 1px solid var(--border);
+}
+
 .subtask {
   display: flex;
   align-items: center;
   gap: 0.4rem;
   font-size: 0.875rem;
+}
+
+.task-row .subtask + .subtask {
+  border-top: 1px dashed var(--border);
 }
 
 .subtask.done .subtask-title {
@@ -1283,7 +1473,9 @@ legend {
     font-size: 0.65rem;
   }
 
-  .row-actions {
+  .row-actions,
+  .add-subtask,
+  .project-archive {
     opacity: 1;
   }
 

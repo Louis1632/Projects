@@ -63,6 +63,47 @@ test('owner completes setup and organises tasks', async ({ page }) => {
   await row.getByRole('button', { name: 'Complete Clean the garage' }).click();
   await expect(row).toHaveClass(/completed/);
 
+  // Sections are columns: add one with the + tile, drag a task into it, then drag that column
+  // to the front by its grip.
+  await page.getByRole('button', { name: 'Add section' }).click();
+  await page.getByLabel('New section name').fill('Later');
+  await page.getByLabel('New section name').press('Enter');
+  const later = page.getByRole('region', { name: 'House – Later' });
+  await expect(later).toBeVisible();
+  await row.dragTo(later);
+  await expect(later.getByText('Clean the garage')).toBeVisible();
+  await later.locator('.drag-grip').dragTo(page.getByRole('region', { name: 'House – Tasks' }));
+  await expect(page.getByRole('region', { name: /^House – / }).first()).toHaveAccessibleName(
+    'House – Later',
+  );
+
+  // The first section can be renamed, and subtasks added without opening the task.
+  await page.getByRole('button', { name: 'Rename section Tasks' }).click();
+  await page.getByLabel('Section name').fill('This week');
+  await page.getByLabel('Section name').press('Enter');
+  await expect(page.getByRole('region', { name: 'House – This week' })).toBeVisible();
+  await row.getByRole('button', { name: 'Add a subtask to Clean the garage' }).click();
+  await row.getByLabel('New subtask for Clean the garage').fill('Recycle old paint');
+  await row.getByLabel('New subtask for Clean the garage').press('Enter');
+  await expect(row.getByText('Recycle old paint')).toBeVisible();
+
+  // Tasks are added quickly from a column, one after another, and detailed afterwards.
+  const thisWeek = page.getByRole('region', { name: 'House – This week' });
+  await thisWeek.getByRole('button', { name: 'Add a task to This week' }).click();
+  const quickTask = thisWeek.getByLabel('New task in This week');
+  await quickTask.fill('Buy bulbs');
+  await quickTask.press('Enter');
+  await expect(quickTask).toHaveValue('');
+  await quickTask.fill('Fix the gate');
+  await quickTask.press('Enter');
+  await expect(thisWeek.getByTestId('task-row')).toHaveText([/Buy bulbs/, /Fix the gate/]);
+  await thisWeek.getByRole('button', { name: 'Buy bulbs', exact: true }).click();
+  const details = page.getByRole('dialog');
+  await details.getByLabel('Due date').fill('2030-01-15');
+  await details.getByRole('button', { name: 'Save changes' }).click();
+  await expect(details).toBeHidden();
+  await expect(thisWeek.getByTestId('task-row').first()).toContainText('◷');
+
   // The one-time setup link cannot be reused.
   await page.context().clearCookies();
   await page.goto(new URL(ownerSetupUrl).pathname);

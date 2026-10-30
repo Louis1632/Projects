@@ -1,3 +1,8 @@
+# Staging: reachable only over Tailscale, on port 8443 of the same Tailscale name and certificate
+# as production (https://<name>.ts.net:8443), so it can be tested from a phone. The port is
+# Traefik's "staging" entry point, from homelab-platform's platform/traefik-config.yaml.
+# Released with deploy/scripts/release-staging.sh, which writes the image digests and the
+# hostname below. See docs/runbooks/staging-release.md.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: tido-staging
@@ -10,11 +15,23 @@ patches:
       name: tido
     path: ingress-patch.yaml
   - path: config-patch.yaml
+  # Port 8443 and Tailscale addresses only (base/tailnet-only.yaml). Kept out of
+  # ingress-patch.yaml, whose values release-staging.sh rewrites.
+  - target:
+      kind: Ingress
+      name: tido
+    patch: |-
+      - op: replace
+        path: /metadata/annotations/traefik.ingress.kubernetes.io~1router.entrypoints
+        value: staging
+      - op: add
+        path: /metadata/annotations/traefik.ingress.kubernetes.io~1router.middlewares
+        value: tido-staging-tailnet-only@kubernetescrd
 # Written by deploy/scripts/release-staging.sh: exact digests of the released images.
 images:
   - name: tido-api
     newName: localhost:5000/tido/api
-    digest: sha256:b41581a905eb73dbfaf0d2c639e125a502fe968e7f5baa47d287a698e70f122f
+    digest: sha256:d874ac5a6c4240fb7936c61a10e1c16b0a3ab1a10b34bd655a129c57fe8eb7db
   - name: tido-web
     newName: localhost:5000/tido/web
-    digest: sha256:5374f82585db19c3e8e226c84de27cf6568dbd8fc9014ca251d2780f501e42c2
+    digest: sha256:53c2e259e70fd8af9128b1c8f929f166511a085232f2497c0e0d093f166bc39b

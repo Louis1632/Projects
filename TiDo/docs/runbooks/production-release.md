@@ -13,7 +13,8 @@ already running on staging, by digest.
    sudo tailscale up
    ```
 2. In the Tailscale admin console (DNS page), turn on **MagicDNS** and **HTTPS Certificates**.
-3. Let your user fetch the Tailscale certificate:
+3. Let your user fetch the Tailscale certificate, and stop Tailscale from rewriting other
+   devices' addresses (otherwise the tailnet-only allow-list refuses them, TIDO-SEC-012):
    ```bash
    sudo bash deploy/scripts/prod-host-setup.sh
    ```

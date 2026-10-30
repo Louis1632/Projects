@@ -12,5 +12,6 @@ resources:
   - api-service.yaml
   - web-service.yaml
   - ingress.yaml
+  - tailnet-only.yaml
   - api-deployment.yaml
   - web-deployment.yaml

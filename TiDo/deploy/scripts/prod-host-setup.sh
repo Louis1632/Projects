@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
-# One-time host preparation for TiDo production. Run after Tailscale is installed and logged in.
+# One-time host preparation for serving TiDo over Tailscale (production, and staging on port
+# 8443). Run after Tailscale is installed and logged in.
 # Run as root:  sudo bash deploy/scripts/prod-host-setup.sh [/dev/sdXN [username]]
 #
 # 1. Lets the given user (default: the sudo caller) fetch this machine's Tailscale
 #    certificate, so certificate renewal needs no root.
-# Steps 2 and 3 run only when a partition is given; re-run with one to add the drive later.
-# 2. Mounts the backup drive partition at /srv/tido-backups on every boot (by UUID, and
+# 2. Stops Tailscale from rewriting the source address of tailnet traffic it forwards, so
+#    Traefik's tailnet-only allow-list sees the real device (docs/security.md, TIDO-SEC-012).
+# Steps 3 and 4 run only when a partition is given; re-run with one to add the drive later.
+# 3. Mounts the backup drive partition at /srv/tido-backups on every boot (by UUID, and
 #    boot continues if the drive is unplugged).
-# 3. Creates production/ on the drive for the nightly backup job, with a marker file the
+# 4. Creates production/ on the drive for the nightly backup job, with a marker file the
 #    job checks so it never writes to the internal disk by mistake.
 # It never formats anything: the partition must already hold an ext4, xfs or btrfs file
 # system. Every step is idempotent, so re-running is safe.
@@ -40,6 +43,12 @@ else
 fi
 systemctl restart tailscaled
 for _ in $(seq 1 30); do tailscale status >/dev/null 2>&1 && break; sleep 1; done
+
+# Traefik's hostPorts forward tailnet traffic into a pod, and with source NAT on, Tailscale
+# rewrites it to come from the pod network, so other devices get 403 (only this PC passes). The
+# NAT only matters for advertised subnet routes, which this machine doesn't have.
+step "Keeping the real source address of tailnet traffic (no source NAT)"
+tailscale set --snat-subnet-routes=false
 
 if [[ -z "$DEVICE" ]]; then
   step "Done (no backup drive given; backups stay off)"

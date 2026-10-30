@@ -1,6 +1,6 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { addDays, todayIn } from '../src/lib/dates';
 import { makeDashboard, makeTask, mockApi, user } from './fixtures';
 import { renderApp } from './render';
@@ -121,6 +121,190 @@ describe('task list', () => {
     await screen.findByRole('link', { name: /Calendar/ });
     expect(screen.queryByRole('link', { name: /People/ })).not.toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/tasks');
+  });
+});
+
+describe('section columns', () => {
+  const laterId = '00000000-0000-4000-8000-0000000000c2';
+  const chore = makeTask({ title: 'Sweep porch' });
+  const withTwoSections = () => {
+    const dashboard = makeDashboard([chore]);
+    const project = dashboard.projects[0]!;
+    project.sections.push({
+      ...project.sections[0]!,
+      id: laterId,
+      name: 'Later',
+      position: 1,
+      tasks: [],
+    });
+    return dashboard;
+  };
+  const dataTransfer = () => ({
+    effectAllowed: 'all',
+    dropEffect: 'none',
+    setData: () => undefined,
+    setDragImage: () => undefined,
+  });
+
+  it('reorders sections with the arrow buttons', async () => {
+    const calls = mockApi({
+      'GET /auth/me': () => ({ body: user }),
+      'GET /dashboard': () => ({ body: withTwoSections() }),
+      [`PATCH /sections/${laterId}`]: () => ({ body: {} }),
+    });
+    renderApp('/tasks');
+    expect(await screen.findByRole('button', { name: 'Move Tasks left' })).toBeDisabled();
+    await userEvent.click(screen.getByRole('button', { name: 'Move Later left' }));
+    await waitFor(() =>
+      expect(calls).toContainEqual({
+        method: 'PATCH',
+        path: `/sections/${laterId}`,
+        body: { position: 0, revision: 1 },
+      }),
+    );
+  });
+
+  it('moves a task into another section by dragging it there', async () => {
+    const calls = mockApi({
+      'GET /auth/me': () => ({ body: user }),
+      'GET /dashboard': () => ({ body: withTwoSections() }),
+      [`POST /tasks/${chore.id}/move`]: () => ({ body: chore }),
+    });
+    renderApp('/tasks');
+    const row = (await screen.findByText('Sweep porch')).closest('article')!;
+    const later = screen.getByRole('region', { name: 'House – Later' });
+    fireEvent.dragStart(row, { dataTransfer: dataTransfer() });
+    fireEvent.dragOver(later, { dataTransfer: dataTransfer() });
+    expect(later).toHaveClass('drop-target');
+    fireEvent.drop(later, { dataTransfer: dataTransfer() });
+    await waitFor(() =>
+      expect(calls).toContainEqual({
+        method: 'POST',
+        path: `/tasks/${chore.id}/move`,
+        body: { sectionId: laterId, position: 0, revision: 1 },
+      }),
+    );
+    expect(later).not.toHaveClass('drop-target');
+  });
+});
+
+describe('list and section controls', () => {
+  const houseId = '00000000-0000-4000-8000-0000000000b1';
+  const sectionId = '00000000-0000-4000-8000-0000000000c1';
+  const chore = makeTask({ title: 'Sweep porch' });
+  const signedIn = (extra: Parameters<typeof mockApi>[0] = {}) =>
+    mockApi({
+      'GET /auth/me': () => ({ body: user }),
+      'GET /dashboard': () => ({ body: makeDashboard([chore]) }),
+      ...extra,
+    });
+
+  it('renames a section by clicking its name', async () => {
+    const calls = signedIn({ [`PATCH /sections/${sectionId}`]: () => ({ body: {} }) });
+    renderApp(`/projects/${houseId}`);
+    await userEvent.click(await screen.findByRole('button', { name: 'Rename section Tasks' }));
+    const field = screen.getByLabelText('Section name');
+    await userEvent.clear(field);
+    await userEvent.type(field, 'This week{Enter}');
+    await waitFor(() =>
+      expect(calls).toContainEqual({
+        method: 'PATCH',
+        path: `/sections/${sectionId}`,
+        body: { name: 'This week', revision: 1 },
+      }),
+    );
+    expect(calls.filter((call) => call.method === 'PATCH')).toHaveLength(1);
+  });
+
+  it('adds a section from the + tile after the last column', async () => {
+    const calls = signedIn({
+      [`POST /projects/${houseId}/sections`]: () => ({ status: 201, body: {} }),
+    });
+    renderApp(`/projects/${houseId}`);
+    await userEvent.click(await screen.findByRole('button', { name: 'Add section' }));
+    await userEvent.type(screen.getByLabelText('New section name'), 'Weekend{Enter}');
+    await waitFor(() =>
+      expect(calls).toContainEqual({
+        method: 'POST',
+        path: `/projects/${houseId}/sections`,
+        body: { name: 'Weekend' },
+      }),
+    );
+    expect(screen.queryByLabelText('New section name')).not.toBeInTheDocument();
+  });
+
+  it('adds a subtask straight from the task row', async () => {
+    const calls = signedIn({ 'POST /tasks': () => ({ status: 201, body: {} }) });
+    renderApp('/tasks');
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Add a subtask to Sweep porch' }),
+    );
+    await userEvent.type(
+      screen.getByLabelText('New subtask for Sweep porch'),
+      'Get a broom{Enter}',
+    );
+    await waitFor(() =>
+      expect(calls).toContainEqual({
+        method: 'POST',
+        path: '/tasks',
+        body: {
+          sectionId,
+          parentTaskId: chore.id,
+          title: 'Get a broom',
+          repeatSubtask: false,
+        },
+      }),
+    );
+    expect(screen.getByLabelText('New subtask for Sweep porch')).toHaveValue('');
+  });
+
+  it('adds tasks one after another from the column, keeping the field open', async () => {
+    const calls = signedIn({ 'POST /tasks': () => ({ status: 201, body: {} }) });
+    renderApp('/tasks');
+    await userEvent.click(await screen.findByRole('button', { name: 'Add a task to Tasks' }));
+    const field = screen.getByLabelText('New task in Tasks');
+    await userEvent.type(field, 'Water plants{Enter}');
+    await waitFor(() => expect(field).toHaveValue(''));
+    await userEvent.type(field, 'Feed cat{Enter}');
+    await waitFor(() =>
+      expect(calls.filter((call) => call.method === 'POST').map((call) => call.body)).toEqual([
+        { sectionId, title: 'Water plants' },
+        { sectionId, title: 'Feed cat' },
+      ]),
+    );
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByLabelText('New task in Tasks')).not.toBeInTheDocument();
+  });
+
+  it('keeps a quick-added title when saving fails', async () => {
+    signedIn({
+      'POST /tasks': () => ({
+        status: 500,
+        body: { error: { code: 'internal', message: 'Something went wrong.' } },
+      }),
+    });
+    renderApp('/tasks');
+    await userEvent.click(await screen.findByRole('button', { name: 'Add a task to Tasks' }));
+    await userEvent.type(screen.getByLabelText('New task in Tasks'), 'Water plants{Enter}');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Something went wrong.');
+    expect(screen.getByLabelText('New task in Tasks')).toHaveValue('Water plants');
+  });
+
+  it('archives a list from the sidebar and leaves its page', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const calls = signedIn({ [`PATCH /projects/${houseId}`]: () => ({ body: {} }) });
+    const { router } = renderApp(`/projects/${houseId}`);
+    expect(await screen.findByRole('heading', { name: 'House', level: 1 })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Archive list' })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Archive House' }));
+    await waitFor(() =>
+      expect(calls).toContainEqual({
+        method: 'PATCH',
+        path: `/projects/${houseId}`,
+        body: { archived: true, revision: 1 },
+      }),
+    );
+    await waitFor(() => expect(router.state.location.pathname).toBe('/tasks'));
   });
 });
 

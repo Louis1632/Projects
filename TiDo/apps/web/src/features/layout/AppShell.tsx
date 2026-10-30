@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
-import { Link, NavLink, Outlet, useNavigate, useOutletContext } from 'react-router';
-import type { SessionUser, Subtask, Task } from '@tido/contracts';
+import { Link, NavLink, Outlet, useMatch, useNavigate, useOutletContext } from 'react-router';
+import type { Project, SessionUser, Subtask, Task } from '@tido/contracts';
 import { api } from '../../lib/api';
 import { todayIn } from '../../lib/dates';
 import { useDashboard, useWorkspaceMutation } from '../../lib/queries';
@@ -38,6 +38,10 @@ export function AppShell() {
   const newerBuild = useNewerBuildAvailable();
 
   const createList = useWorkspaceMutation((name: string) => api.createProject(name));
+  const archiveList = useWorkspaceMutation((project: Project) =>
+    api.updateProject(project.id, { archived: true, revision: project.revision }),
+  );
+  const openList = useMatch('/projects/:projectId')?.params.projectId;
 
   const logout = async () => {
     try {
@@ -57,6 +61,16 @@ export function AppShell() {
       navigate(`/projects/${project.id}`);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Could not create the list.');
+    }
+  };
+
+  const archive = async (project: Project) => {
+    if (!window.confirm(`Archive "${project.name}"? Its tasks are kept but hidden.`)) return;
+    try {
+      await archiveList.mutateAsync(project);
+      if (openList === project.id) navigate('/tasks');
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Could not archive the list.');
     }
   };
 
@@ -106,13 +120,29 @@ export function AppShell() {
           )}
           <div className="sidebar-label">Lists</div>
           {dashboard.data.projects.map((project) => (
-            <NavLink className={listClass} key={project.id} to={`/projects/${project.id}`}>
-              <span
-                className="project-dot"
-                style={{ background: project.color ?? 'var(--teal)' }}
-              />
-              {project.name}
-            </NavLink>
+            <div className="project-item" key={project.id}>
+              <NavLink className={listClass} to={`/projects/${project.id}`}>
+                <span
+                  className="project-dot"
+                  style={{ background: project.color ?? 'var(--teal)' }}
+                />
+                {project.name}
+              </NavLink>
+              <button
+                className="icon-button small project-archive"
+                aria-label={`Archive ${project.name}`}
+                title="Archive list"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void archive(project);
+                }}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="3" y="4" width="18" height="5" rx="1" />
+                  <path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M10 13h4" />
+                </svg>
+              </button>
+            </div>
           ))}
         </nav>
         <form className="new-list-form" onSubmit={(event) => void submitList(event)}>

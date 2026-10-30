@@ -1,8 +1,9 @@
-import type { CSSProperties } from 'react';
+import type { CSSProperties, HTMLAttributes } from 'react';
 import type { Member, Subtask, Task } from '@tido/contracts';
 import { prettyDay } from '../../lib/dates';
 import { describeRule } from '../../lib/recurrence';
 import { priorityLabels } from './labels';
+import { QuickAdd } from './QuickAdd';
 
 interface TaskRowProps {
   task: Task;
@@ -11,7 +12,14 @@ interface TaskRowProps {
   onEdit: (task: Task | Subtask) => void;
   onToggle: (task: Task | Subtask) => void;
   onMove?: (task: Task, direction: -1 | 1) => void;
+  /** Adds a subtask straight from the row, without opening the editor. */
+  onAddSubtask?: (task: Task, title: string) => Promise<unknown>;
   showSection?: string;
+  /** Drag-and-drop handlers, for views where rows can be dragged around. */
+  dragProps?: HTMLAttributes<HTMLElement>;
+  dragging?: boolean;
+  /** Shows where a dragged task would land: just above this row. */
+  dropBefore?: boolean;
 }
 
 export function TaskRow({
@@ -21,13 +29,21 @@ export function TaskRow({
   onEdit,
   onToggle,
   onMove,
+  onAddSubtask,
   showSection,
+  dragProps,
+  dragging,
+  dropBefore,
 }: TaskRowProps) {
   const assignee = members.find((member) => member.id === task.assigneeId);
   const done = task.status === 'done';
   const openSubtasks = task.subtasks.filter((subtask) => subtask.status !== 'done').length;
+  const classes = ['task-row'];
+  if (done) classes.push('completed');
+  if (dragging) classes.push('dragging');
+  if (dropBefore) classes.push('drop-before');
   return (
-    <article className={done ? 'task-row completed' : 'task-row'} data-testid="task-row">
+    <article {...dragProps} className={classes.join(' ')} data-testid="task-row">
       <button
         className="check-button"
         aria-label={done ? `Reopen ${task.title}` : `Complete ${task.title}`}
@@ -111,6 +127,16 @@ export function TaskRow({
             </li>
           ))}
         </ul>
+      )}
+      {onAddSubtask && (
+        <QuickAdd
+          label="+ Subtask"
+          buttonLabel={`Add a subtask to ${task.title}`}
+          fieldLabel={`New subtask for ${task.title}`}
+          placeholder="Subtask, then Enter"
+          className="add-subtask"
+          onAdd={(title) => onAddSubtask(task, title)}
+        />
       )}
     </article>
   );
