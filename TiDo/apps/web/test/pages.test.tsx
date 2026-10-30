@@ -306,6 +306,20 @@ describe('list and section controls', () => {
     );
     await waitFor(() => expect(router.state.location.pathname).toBe('/tasks'));
   });
+
+  it('switches between light, dark and the device theme', async () => {
+    signedIn();
+    renderApp('/tasks');
+    const theme = within(await screen.findByRole('group', { name: 'Theme' }));
+    expect(theme.getByRole('button', { name: 'System' })).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(theme.getByRole('button', { name: 'Dark' }));
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(localStorage.getItem('tido.theme')).toBe('dark');
+    expect(theme.getByRole('button', { name: 'Dark' })).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(theme.getByRole('button', { name: 'System' }));
+    expect(document.documentElement.dataset.theme).toBeUndefined();
+    expect(localStorage.getItem('tido.theme')).toBeNull();
+  });
 });
 
 describe('task editor', () => {

@@ -242,7 +242,7 @@ export function TasksPage() {
               <h2>
                 <span
                   className="project-dot"
-                  style={{ background: project.color ?? 'var(--teal)' }}
+                  style={{ background: project.color ?? 'var(--accent)' }}
                 />
                 {project.name}
               </h2>

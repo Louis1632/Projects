@@ -8,6 +8,7 @@ import { useDashboard, useWorkspaceMutation } from '../../lib/queries';
 import { buildInfo, useNewerBuildAvailable, useVersionSeen } from '../about/version';
 import { Brand, LoadingPage, useCurrentUser } from '../auth/RequireSession';
 import { TaskEditor } from '../tasks/TaskEditor';
+import { ThemeSwitch } from './ThemeSwitch';
 
 export type EditorTarget =
   { mode: 'create'; sectionId?: string; dueDate?: string } | { mode: 'edit'; task: Task | Subtask };
@@ -124,7 +125,7 @@ export function AppShell() {
               <NavLink className={listClass} to={`/projects/${project.id}`}>
                 <span
                   className="project-dot"
-                  style={{ background: project.color ?? 'var(--teal)' }}
+                  style={{ background: project.color ?? 'var(--accent)' }}
                 />
                 {project.name}
               </NavLink>
@@ -158,6 +159,7 @@ export function AppShell() {
           />
         </form>
         <div className="sidebar-spacer" />
+        <ThemeSwitch />
         <Link to="/whats-new" className="version-link" onClick={closeMenu}>
           TiDo v{buildInfo.version}
           {version.unseen && (

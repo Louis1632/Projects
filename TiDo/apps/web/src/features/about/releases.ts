@@ -16,6 +16,25 @@ export interface Release {
 
 export const releases: Release[] = [
   {
+    version: '0.5.0',
+    date: '2026-10-30',
+    summary: 'A fresh blue look, with a light and dark theme you can choose.',
+    changes: [
+      {
+        kind: 'new',
+        text: 'Choose Light, Dark or System at the bottom of the sidebar. System follows your device, and each device remembers its own choice.',
+      },
+      {
+        kind: 'improved',
+        text: 'Blue now marks what matters: buttons, links, the selected list, column headers and the task under your pointer.',
+      },
+      {
+        kind: 'improved',
+        text: 'Softer neutral backgrounds and slightly tighter rounded corners.',
+      },
+    ],
+  },
+  {
     version: '0.4.0',
     date: '2026-10-30',
     summary: 'Add tasks quickly, one after another, straight from a column.',
