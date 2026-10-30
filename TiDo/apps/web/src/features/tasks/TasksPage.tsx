@@ -359,7 +359,9 @@ export function TasksPage() {
                     ))}
                     {visible.length === 0 && (
                       <p className="empty-inline">
-                        {section.tasks.length ? 'No matching tasks.' : 'No tasks yet.'}
+                        {section.tasks.length
+                          ? 'No matching tasks.'
+                          : 'Nothing here yet, Please add a task. Add your first task below.'}
                       </p>
                     )}
                     <QuickAdd

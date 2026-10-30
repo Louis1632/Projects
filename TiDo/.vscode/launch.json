@@ -8,8 +8,9 @@
       "type": "node",
       "request": "launch",
       "cwd": "${workspaceFolder}/apps/api",
-      // Same as `pnpm dev:api`: tsx runs the TypeScript directly, --watch restarts on save.
-      "runtimeArgs": ["--env-file-if-exists=../../.env", "--import", "tsx", "--watch"],
+      // Like `pnpm dev:api` (tsx runs the TypeScript directly), but without --watch, whose
+      // restarts the debugger can lose. After editing API code, restart with Ctrl+Shift+F5.
+      "runtimeArgs": ["--env-file-if-exists=../../.env", "--import", "tsx"],
       "program": "src/server.ts",
       "console": "integratedTerminal",
       "preLaunchTask": "Database: start",

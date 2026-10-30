@@ -66,7 +66,8 @@ is `louis@example.test`. If you've forgotten that password, reset the local data
    - `F11` (step into) on the `createTask(...)` line goes into `tasks/service.ts`.
    - `Shift+F11` (step out) returns to the caller.
    - `F5` continues to the next breakpoint.
-6. Saving a file restarts the API (`--watch`), and the debugger reattaches by itself.
+6. After editing API code, restart it with `Ctrl+Shift+F5` (the green restart arrow) so it
+   runs your new code. Web changes need no restart: Vite updates the browser on save.
 
 Other useful places to break: `plugins/auth.ts` (runs for every request), and
 `modules/recurrence/service.ts` (create a repeating task).
