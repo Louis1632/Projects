@@ -1,6 +1,6 @@
 {
   // Open the TiDo folder itself in VS Code (not Projects), or these paths won't resolve.
-  // Run and Debug (Ctrl+Shift+D): pick a configuration, then F5. See docs/runbooks/first-change.md.
+  // Run and Debug (Ctrl+Shift+D): pick a configuration, then F5. See docs/runbooks/making-a-change.md.
   "version": "0.2.0",
   "configurations": [
     {
