@@ -76,7 +76,7 @@ describe('task list', () => {
     expect(within(rows[1]!).getByText('☑ 1/1')).toBeInTheDocument();
   });
 
-  it('filters by status, assignee and search', async () => {
+  it('filters by status and assignee from the collapsed filter panel', async () => {
     mockApi({
       'GET /auth/me': () => ({ body: user }),
       'GET /dashboard': () => ({ body: makeDashboard(tasks) }),
@@ -84,15 +84,17 @@ describe('task list', () => {
     renderApp('/tasks');
     await screen.findByText('Mow lawn');
 
+    expect(screen.getByLabelText('Status')).not.toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'Filters' }));
     await userEvent.selectOptions(screen.getByLabelText('Status'), 'open');
     expect(screen.queryByText('Clean gutters')).not.toBeInTheDocument();
     await userEvent.selectOptions(screen.getByLabelText('Assigned'), 'none');
     expect(screen.queryByText('Mow lawn')).not.toBeInTheDocument();
     expect(screen.getByText('Pay rates')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Filters 2' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
-    await userEvent.type(screen.getByPlaceholderText('Search tasks'), 'invoice');
-    expect(screen.getByText('Pay rates')).toBeInTheDocument();
-    expect(screen.queryByText('Mow lawn')).not.toBeInTheDocument();
+    expect(screen.getByText('Mow lawn')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Filters' })).toBeInTheDocument();
   });
 
   it('completes a task through the API', async () => {
@@ -320,17 +322,53 @@ describe('list and section controls', () => {
     expect(document.documentElement.dataset.theme).toBeUndefined();
     expect(localStorage.getItem('tido.theme')).toBeNull();
   });
+
+  it('hides the sidebar with the menu button and remembers it', async () => {
+    signedIn();
+    renderApp('/tasks');
+    const toggle = await screen.findByRole('button', { name: 'Hide menu' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAccessibleName('Show menu');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(localStorage.getItem('tido.navHidden')).toBe('true');
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(localStorage.getItem('tido.navHidden')).toBeNull();
+  });
+
+  it('signs out from the menu under the signed-in person', async () => {
+    const calls = signedIn({ 'POST /auth/logout': () => ({ body: { ok: true } }) });
+    renderApp('/tasks');
+    expect(screen.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument();
+    await userEvent.click(await screen.findByRole('button', { name: /Olive/ }));
+    expect(screen.getByRole('link', { name: 'Account settings' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+    await waitFor(() =>
+      expect(calls.some((call) => call.method === 'POST' && call.path === '/auth/logout')).toBe(
+        true,
+      ),
+    );
+  });
 });
 
 describe('task editor', () => {
+  // A task with full details starts from a day on the calendar.
+  const openNewTask = async () => {
+    const { container } = renderApp('/calendar');
+    await screen.findByRole('grid');
+    const day = container.querySelector(`[data-day="${today}"] .day-number`)!;
+    await userEvent.click(day);
+  };
+
   it('creates a recurring task with the chosen rule', async () => {
     const calls = mockApi({
       'GET /auth/me': () => ({ body: user }),
       'GET /dashboard': () => ({ body: makeDashboard([]) }),
+      'GET /calendar': () => ({ body: [] }),
       'POST /tasks': ({ body }) => ({ status: 201, body: makeTask(body as object) }),
     });
-    renderApp('/tasks');
-    await userEvent.click(await screen.findByRole('button', { name: '+ New task' }));
+    await openNewTask();
     const dialog = await screen.findByRole('dialog');
     await userEvent.type(within(dialog).getByLabelText('Title'), 'Water plants');
     await userEvent.selectOptions(within(dialog).getByLabelText('Repeat pattern'), 'weekly');
@@ -359,9 +397,9 @@ describe('task editor', () => {
         status: 400,
         body: { error: { code: 'invalid_rrule', message: 'That rule repeats too often.' } },
       }),
+      'GET /calendar': () => ({ body: [] }),
     });
-    renderApp('/tasks');
-    await userEvent.click(await screen.findByRole('button', { name: '+ New task' }));
+    await openNewTask();
     const dialog = await screen.findByRole('dialog');
     await userEvent.type(within(dialog).getByLabelText('Title'), 'x');
     await userEvent.click(within(dialog).getByRole('button', { name: 'Create task' }));

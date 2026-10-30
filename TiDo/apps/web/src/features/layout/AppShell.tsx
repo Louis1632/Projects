@@ -8,7 +8,9 @@ import { useDashboard, useWorkspaceMutation } from '../../lib/queries';
 import { buildInfo, useNewerBuildAvailable, useVersionSeen } from '../about/version';
 import { Brand, LoadingPage, useCurrentUser } from '../auth/RequireSession';
 import { TaskEditor } from '../tasks/TaskEditor';
+import { isPhone, useNavOpen } from './nav';
 import { ThemeSwitch } from './ThemeSwitch';
+import { UserMenu } from './UserMenu';
 
 export type EditorTarget =
   { mode: 'create'; sectionId?: string; dueDate?: string } | { mode: 'edit'; task: Task | Subtask };
@@ -16,7 +18,6 @@ export type EditorTarget =
 export interface ShellContext {
   user: SessionUser;
   today: string;
-  search: string;
   openEditor: (target: EditorTarget) => void;
   notify: (message: string) => void;
   markVersionSeen: () => void;
@@ -29,11 +30,10 @@ export function AppShell() {
   const dashboard = useDashboard();
   const client = useQueryClient();
   const navigate = useNavigate();
-  const [search, setSearch] = useState('');
   const [editor, setEditor] = useState<EditorTarget | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [newList, setNewList] = useState('');
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [navOpen, setNavOpen] = useNavOpen();
   const today = todayIn(user.workspace.timezone);
   const version = useVersionSeen();
   const newerBuild = useNewerBuildAvailable();
@@ -82,7 +82,6 @@ export function AppShell() {
   const context: ShellContext = {
     user,
     today,
-    search,
     openEditor: setEditor,
     notify: setNotice,
     markVersionSeen: version.markSeen,
@@ -91,20 +90,22 @@ export function AppShell() {
     isActive ? 'nav-item active' : 'nav-item';
   const listClass = ({ isActive }: { isActive: boolean }) =>
     isActive ? 'project-link active' : 'project-link';
-  const closeMenu = () => setMenuOpen(false);
+  // On a phone the sidebar covers the page, so picking somewhere to go closes it.
+  const closeMenu = () => {
+    if (isPhone()) setNavOpen(false);
+  };
 
   return (
-    <div className="app-shell">
-      <aside className={menuOpen ? 'sidebar open' : 'sidebar'} aria-label="Workspace navigation">
+    <div className={navOpen ? 'app-shell nav-open' : 'app-shell'}>
+      <aside id="sidebar" className="sidebar" aria-label="Workspace navigation">
         <div className="sidebar-top">
           <Brand />
           <button
-            className="icon-button menu-toggle"
-            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((open) => !open)}
+            className="icon-button menu-close"
+            aria-label="Close menu"
+            onClick={() => setNavOpen(false)}
           >
-            {menuOpen ? '×' : '☰'}
+            ×
           </button>
         </div>
         <nav className="sidebar-body" onClick={closeMenu}>
@@ -169,39 +170,20 @@ export function AppShell() {
             </>
           )}
         </Link>
-        <div className="user-menu">
-          <div className="avatar" aria-hidden="true">
-            {user.displayName.slice(0, 1).toUpperCase()}
-          </div>
-          <Link to="/account" className="user-details" onClick={closeMenu}>
-            <strong>{user.displayName}</strong>
-            <small>{user.role === 'owner' ? 'Workspace owner' : 'Member'}</small>
-          </Link>
-          <button
-            className="icon-button"
-            aria-label="Sign out"
-            title="Sign out"
-            onClick={() => void logout()}
-          >
-            ↪
-          </button>
-        </div>
+        <UserMenu user={user} onNavigate={closeMenu} onSignOut={() => void logout()} />
       </aside>
+      {navOpen && <div className="nav-backdrop" aria-hidden="true" onClick={closeMenu} />}
 
       <main className="main-content">
         <header className="topbar">
-          <label className="searchbox">
-            <span aria-hidden="true">⌕</span>
-            <span className="sr-only">Search tasks</span>
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search tasks"
-            />
-          </label>
-          <button className="primary-button" onClick={() => setEditor({ mode: 'create' })}>
-            + New task
+          <button
+            className="icon-button menu-toggle"
+            aria-label={navOpen ? 'Hide menu' : 'Show menu'}
+            aria-controls="sidebar"
+            aria-expanded={navOpen}
+            onClick={() => setNavOpen(!navOpen)}
+          >
+            ☰
           </button>
         </header>
 

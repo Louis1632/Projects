@@ -341,8 +341,21 @@ legend {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 16rem minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   min-height: 100vh;
+}
+
+/* The ☰ button shows and hides the sidebar; a computer gives it a column of its own. */
+.app-shell.nav-open {
+  grid-template-columns: 16rem minmax(0, 1fr);
+}
+
+.app-shell:not(.nav-open) > .sidebar {
+  display: none;
+}
+
+.nav-backdrop {
+  display: none;
 }
 
 .sidebar {
@@ -365,7 +378,7 @@ legend {
   padding: 0 0.5rem 0.75rem;
 }
 
-.menu-toggle {
+.menu-close {
   display: none;
 }
 
@@ -523,19 +536,71 @@ legend {
 }
 
 .user-menu {
+  position: relative;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--border);
+}
+
+.user-button {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  padding: 0.6rem 0.4rem 0;
-  border-top: 1px solid var(--border);
+  width: 100%;
+  padding: 0.35rem 0.4rem;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+
+.user-button:hover,
+.user-button[aria-expanded='true'] {
+  background: var(--surface-2);
+}
+
+.user-caret {
+  color: var(--muted);
 }
 
 .user-details {
   display: grid;
   flex: 1;
   min-width: 0;
+}
+
+/* Opens upwards, since the user sits at the foot of the sidebar. */
+.account-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.25rem);
+  left: 0;
+  display: grid;
+  padding: 0.3rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.account-menu a,
+.account-menu button {
+  padding: 0.5rem 0.65rem;
+  border: none;
+  border-radius: 6px;
+  background: none;
   color: var(--text);
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
   text-decoration: none;
+}
+
+.account-menu a:hover,
+.account-menu button:hover {
+  background: var(--surface-2);
+  color: var(--accent);
 }
 
 .user-details strong,
@@ -570,35 +635,7 @@ legend {
   display: flex;
   gap: 0.75rem;
   align-items: center;
-  margin-bottom: 1.5rem;
-}
-
-.searchbox {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 0 0.75rem;
-  max-width: 34rem;
-  font-weight: 400;
-}
-
-.searchbox input {
-  border: none;
-  background: transparent;
-  padding-left: 0;
-}
-
-.searchbox input:focus-visible {
-  outline: none;
-}
-
-.searchbox:focus-within {
-  outline: 2px solid var(--focus);
-  outline-offset: 1px;
+  margin: -0.4rem 0 0.75rem -0.5rem;
 }
 
 .notice {
@@ -653,6 +690,38 @@ legend {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--accent) !important;
+}
+
+.filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+}
+
+.filter-toggle:hover,
+.filter-toggle[aria-expanded='true'] {
+  background: var(--surface-2);
+}
+
+.filter-count {
+  min-width: 1.25rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.filters[hidden] {
+  display: none;
 }
 
 .filters {
@@ -1447,47 +1516,82 @@ legend {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .sidebar {
-    position: sticky;
-    height: auto;
-    max-height: 100vh;
-    z-index: 10;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-    padding: 0.6rem 1rem;
+  .app-shell.nav-open {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .sidebar-top {
-    padding: 0;
+  /* A drawer that slides in from the left, over the page. */
+  .sidebar,
+  .app-shell:not(.nav-open) > .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 30;
+    display: flex;
+    width: min(18rem, 85vw);
+    height: 100dvh;
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition:
+      transform 0.2s ease,
+      visibility 0.2s;
   }
 
-  .menu-toggle {
+  .nav-open > .sidebar {
+    transform: none;
+    visibility: visible;
+    box-shadow: var(--shadow);
+  }
+
+  .menu-close {
     display: inline-grid;
   }
 
-  .sidebar:not(.open) .sidebar-body,
-  .sidebar:not(.open) .new-list-form,
-  .sidebar:not(.open) .user-menu,
-  .sidebar:not(.open) .version-link,
-  .sidebar:not(.open) .theme-switch,
-  .sidebar:not(.open) .sidebar-spacer {
-    display: none;
-  }
-
-  .sidebar.open .sidebar-body {
-    margin-top: 0.5rem;
+  .nav-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: rgb(0 0 0 / 0.4);
   }
 
   .main-content {
-    padding: 1rem 1rem 3rem;
+    padding: 0.75rem 1rem 1.5rem;
   }
 
   .topbar {
-    flex-wrap: wrap;
+    margin-bottom: 0.25rem;
   }
 
-  .searchbox {
-    max-width: none;
+  /* Leave the screen to the list: its name, the Filters button and the sections. */
+  .screen {
+    gap: 0.75rem;
+  }
+
+  .screen-heading {
+    align-items: center;
+  }
+
+  .screen-heading p {
+    display: none;
+  }
+
+  /* One section fills the screen, with the edge of the next peeking in to swipe to. */
+  .section-columns {
+    margin-inline: -1rem;
+    padding-inline: 1rem;
+    scroll-padding-inline: 1rem;
+    scroll-snap-type: x mandatory;
+    gap: 0.75rem;
+  }
+
+  .section-columns > .section-card,
+  .section-columns > .add-section-form {
+    flex-basis: calc(100% - 1rem);
+    min-height: calc(100dvh - 9.5rem);
+  }
+
+  .section-columns > .add-section-tile {
+    scroll-snap-align: end;
   }
 
   .filters label {

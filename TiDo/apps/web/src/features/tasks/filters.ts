@@ -4,7 +4,6 @@ import { addDays } from '../../lib/dates';
 export type DueFilter = 'all' | 'overdue' | 'today' | 'week' | 'none';
 
 export interface TaskFilters {
-  search: string;
   status: TaskStatus | 'open' | 'all';
   assigneeId: string | 'all' | 'none';
   priority: TaskPriority | 'all';
@@ -13,7 +12,6 @@ export interface TaskFilters {
 }
 
 export const defaultFilters: TaskFilters = {
-  search: '',
   status: 'all',
   assigneeId: 'all',
   priority: 'all',
@@ -56,23 +54,12 @@ export function taskMatches(task: Task, filters: TaskFilters, today: string): bo
   if (filters.priority !== 'all' && task.priority !== filters.priority) return false;
   if (filters.labelId !== 'all' && !task.labels.some((label) => label.id === filters.labelId))
     return false;
-  if (!matchesDue(task, filters.due, today)) return false;
-
-  const query = filters.search.trim().toLowerCase();
-  if (!query) return true;
-  const haystack = [
-    task.title,
-    task.notes ?? '',
-    ...task.labels.map((label) => label.name),
-    ...task.subtasks.map((subtask) => subtask.title),
-  ]
-    .join(' ')
-    .toLowerCase();
-  return haystack.includes(query);
+  return matchesDue(task, filters.due, today);
 }
 
-export function filtersActive(filters: TaskFilters): boolean {
-  return (Object.keys(defaultFilters) as (keyof TaskFilters)[]).some(
-    (key) => key !== 'search' && filters[key] !== defaultFilters[key],
-  );
+/** How many filters differ from the defaults, for the badge on the Filters button. */
+export function activeFilterCount(filters: TaskFilters): number {
+  return (Object.keys(defaultFilters) as (keyof TaskFilters)[]).filter(
+    (key) => filters[key] !== defaultFilters[key],
+  ).length;
 }
