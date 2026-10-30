@@ -1,0 +1,74 @@
+# One k6 load-test run inside tido-loadtest. deploy/scripts/loadtest.sh fills in __RUN__, puts
+# the scripts from loadtest/ in the tido-loadgen-scripts ConfigMap and the run's settings in
+# tido-loadgen-settings.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: tido-loadgen-__RUN__
+  labels:
+    app.kubernetes.io/name: tido-loadgen
+    app.kubernetes.io/part-of: tido
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 21600
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tido-loadgen
+        app.kubernetes.io/part-of: tido
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 12345
+        runAsGroup: 12345
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: k6
+          image: grafana/k6:2.3.0@sha256:2dd4756ec6e14e62778916e1eb850108e4b499304c02df56760fa0bdb0fba0b8
+          args: ['run', '--no-color', '/scripts/tido.js']
+          envFrom:
+            - configMapRef:
+                name: tido-loadgen-settings
+          env:
+            - name: API_URL
+              value: http://tido-api:3000
+            - name: WEB_URL
+              value: http://tido-web
+            - name: OWNER_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: tido-loadtest-owner
+                  key: email
+            - name: OWNER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: tido-loadtest-owner
+                  key: password
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            requests:
+              cpu: 250m
+              memory: 128Mi
+            limits:
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ['ALL']
+      volumes:
+        - name: scripts
+          configMap:
+            name: tido-loadgen-scripts
+        - name: tmp
+          emptyDir: {}

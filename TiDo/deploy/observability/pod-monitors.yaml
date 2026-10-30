@@ -2,6 +2,10 @@
 # homelab-platform). A PodMonitor selects pods by label and names the container port to scrape;
 # the Prometheus operator turns it into scrape config.
 # `jobLabel` sets the `job` label from a pod label, so queries read {job="tido-api"}.
+# tido-loadtest is scraped too, so its metrics show on the dashboard (pick it in the namespace
+# dropdown). Its targets exist only while that throwaway namespace does. The alerts in
+# tido-alerts.yaml deliberately skip it, since a load test is meant to be slow and is usually
+# torn down (TIDO-SEC-013, docs/runbooks/load-testing.md).
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
@@ -10,7 +14,7 @@ metadata:
 spec:
   jobLabel: app.kubernetes.io/name
   namespaceSelector:
-    matchNames: [tido-staging, tido-production]
+    matchNames: [tido-staging, tido-production, tido-loadtest]
   selector:
     matchLabels:
       app.kubernetes.io/name: tido-api
@@ -27,7 +31,7 @@ metadata:
 spec:
   jobLabel: cnpg.io/cluster
   namespaceSelector:
-    matchNames: [tido-staging, tido-production]
+    matchNames: [tido-staging, tido-production, tido-loadtest]
   selector:
     matchLabels:
       cnpg.io/cluster: tido-db

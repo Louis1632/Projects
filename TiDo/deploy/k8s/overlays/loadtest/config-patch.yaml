@@ -1,0 +1,9 @@
+# Same settings as production (including its rate limits), except the address used in invite
+# links. TRUST_PROXY stays at one hop: here the load generator is that hop, and it sets
+# X-Forwarded-For so each simulated user has its own address, as real users would.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tido-api-config
+data:
+  WEB_ORIGIN: https://tido-loadtest.invalid
