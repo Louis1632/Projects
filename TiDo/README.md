@@ -113,6 +113,10 @@ pnpm dev                        # API on :3000, web on http://localhost:5173
 
 API documentation: http://localhost:3000/docs (development only).
 
+To step through the code, open the `TiDo` folder in VS Code and use the **Run and Debug**
+configurations in `.vscode/`. `docs/runbooks/first-change.md` walks through a change from the
+debugger to production.
+
 ## Checks
 
 ```bash

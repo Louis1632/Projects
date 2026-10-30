@@ -1,0 +1,54 @@
+{
+  // Open the TiDo folder itself in VS Code (not Projects), or these paths won't resolve.
+  // Run and Debug (Ctrl+Shift+D): pick a configuration, then F5. See docs/runbooks/first-change.md.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "API",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/apps/api",
+      // Same as `pnpm dev:api`: tsx runs the TypeScript directly, --watch restarts on save.
+      "runtimeArgs": ["--env-file-if-exists=../../.env", "--import", "tsx", "--watch"],
+      "program": "src/server.ts",
+      "console": "integratedTerminal",
+      "preLaunchTask": "Database: start",
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+    },
+    {
+      "name": "Web (Chrome)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/apps/web",
+      "preLaunchTask": "Web: Vite dev server",
+      "skipFiles": ["**/node_modules/**"]
+    },
+    {
+      "name": "Unit tests: current file",
+      "type": "node",
+      "request": "launch",
+      // Open a test file (apps/*/test/...) first; vitest runs from that app's folder.
+      "cwd": "${workspaceFolder}/${input:appDir}",
+      "program": "${workspaceFolder}/${input:appDir}/node_modules/vitest/vitest.mjs",
+      "args": ["run", "${file}"],
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Full stack (API + Web)",
+      "configurations": ["API", "Web (Chrome)"],
+      "stopAll": true
+    }
+  ],
+  "inputs": [
+    {
+      "id": "appDir",
+      "type": "pickString",
+      "description": "Which app does this test file belong to?",
+      "options": ["apps/api", "apps/web"]
+    }
+  ]
+}
