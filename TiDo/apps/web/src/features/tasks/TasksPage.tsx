@@ -4,7 +4,7 @@ import type { Section, SectionWithTasks, Subtask, Task } from '@tido/contracts';
 import { api } from '../../lib/api';
 import { useDashboard, useWorkspaceMutation } from '../../lib/queries';
 import { useShell } from '../layout/AppShell';
-import { defaultFilters, filtersActive, taskMatches, type TaskFilters } from './filters';
+import { activeFilterCount, defaultFilters, taskMatches, type TaskFilters } from './filters';
 import { priorityLabels, statusLabels } from './labels';
 import { QuickAdd } from './QuickAdd';
 import { AddSection, SectionName } from './SectionControls';
@@ -14,9 +14,10 @@ type Dragged = { kind: 'section'; section: Section } | { kind: 'task'; task: Tas
 
 export function TasksPage() {
   const { projectId } = useParams();
-  const { today, search, openEditor, notify } = useShell();
+  const { today, openEditor, notify, announce } = useShell();
   const dashboard = useDashboard().data!;
   const [filters, setFilters] = useState<TaskFilters>(defaultFilters);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   // A section being renamed cannot be dragged, so its name field behaves like any other.
   const [renaming, setRenaming] = useState<string | null>(null);
   const [dragged, setDragged] = useState<Dragged | null>(null);
@@ -57,6 +58,29 @@ export function TasksPage() {
     }),
   );
 
+  /**
+   * Ticks a task or subtask. Ticking the last open part of a task archives it from the
+   * list (the API leaves it out), so say so and offer to undo. Repeating tasks are left
+   * out: ticking one simply shows the next occurrence.
+   */
+  const tick = (item: Task | Subtask, task: Task) => {
+    const others = task.subtasks.filter((subtask) => subtask.id !== item.id);
+    const archives =
+      item.status !== 'done' &&
+      !task.recurrence &&
+      (item.id === task.id || task.status === 'done') &&
+      others.every((subtask) => subtask.status === 'done');
+    void run(
+      toggle.mutateAsync(item).then(() => {
+        if (!archives) return;
+        announce({
+          message: `“${task.title}” is done and archived.`,
+          action: { label: 'Undo', run: () => api.completeTask(item.id, false) },
+        });
+      }),
+    );
+  };
+
   const run = (promise: Promise<unknown>) =>
     promise.catch((error: unknown) =>
       notify(error instanceof Error ? error.message : 'Could not save.'),
@@ -78,7 +102,7 @@ export function TasksPage() {
       </section>
     );
   }
-  const effective = { ...filters, search };
+  const filterCount = activeFilterCount(filters);
   const set = <K extends keyof TaskFilters>(key: K, value: TaskFilters[K]) =>
     setFilters((current) => ({ ...current, [key]: value }));
   const activeMembers = dashboard.members.filter((member) => member.active);
@@ -141,15 +165,35 @@ export function TasksPage() {
 
   return (
     <section className="screen">
-      <div className="screen-heading">
+      <div className="screen-heading tasks-heading">
         <div>
           <p className="eyebrow">Shared workspace</p>
           <h1>{single ? single.name : 'All tasks'}</h1>
           <p>Keep the household moving, together.</p>
         </div>
+        <button
+          className={filterCount ? 'filter-toggle active' : 'filter-toggle'}
+          aria-expanded={filtersOpen}
+          aria-controls="task-filters"
+          onClick={() => setFiltersOpen((open) => !open)}
+        >
+          Filters
+          {filterCount > 0 && (
+            <>
+              {' '}
+              <span className="filter-count">{filterCount}</span>
+            </>
+          )}
+        </button>
       </div>
 
-      <div className="filters" role="group" aria-label="Filters">
+      <div
+        className="filters"
+        id="task-filters"
+        role="group"
+        aria-label="Filters"
+        hidden={!filtersOpen}
+      >
         <label>
           Status
           <select
@@ -218,7 +262,7 @@ export function TasksPage() {
             <option value="none">No date</option>
           </select>
         </label>
-        {filtersActive(filters) && (
+        {filterCount > 0 && (
           <button className="text-button" onClick={() => setFilters(defaultFilters)}>
             Clear filters
           </button>
@@ -249,7 +293,7 @@ export function TasksPage() {
             )}
             <div className="section-columns">
               {project.sections.map((section, sectionIndex) => {
-                const visible = section.tasks.filter((task) => taskMatches(task, effective, today));
+                const visible = section.tasks.filter((task) => taskMatches(task, filters, today));
                 const classes = ['section-card'];
                 if (dragged?.kind === 'section' && dragged.section.id === section.id)
                   classes.push('dragging');
@@ -319,7 +363,7 @@ export function TasksPage() {
                         members={dashboard.members}
                         today={today}
                         onEdit={(item) => openEditor({ mode: 'edit', task: item })}
-                        onToggle={(item) => void run(toggle.mutateAsync(item))}
+                        onToggle={(item) => tick(item, task)}
                         onAddSubtask={(item, title) =>
                           save(addSubtask.mutateAsync({ task: item, title }))
                         }

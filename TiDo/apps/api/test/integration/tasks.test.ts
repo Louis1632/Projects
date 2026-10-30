@@ -181,6 +181,33 @@ describe('subtasks', () => {
     expect(loaded.body.status).toBe('todo');
     expect(loaded.body.subtasks[0].status).toBe('done');
   });
+
+  it('archives a task from the list once it and all its subtasks are done', async () => {
+    const listed = async () =>
+      titles((await owner.get('/dashboard')).body.projects[0].sections[0].tasks);
+    const single = await owner.post('/tasks', { sectionId, title: 'Single' });
+    const parent = await owner.post('/tasks', { sectionId, title: 'Parent' });
+    const child = await owner.post('/tasks', {
+      sectionId,
+      parentTaskId: parent.body.id,
+      title: 'Child',
+    });
+
+    await owner.post(`/tasks/${single.body.id}/completion`, { completed: true });
+    expect(await listed()).toEqual(['Parent']);
+
+    // Done with a subtask still open: it stays, until that subtask is ticked too.
+    await owner.post(`/tasks/${parent.body.id}/completion`, { completed: true });
+    expect(await listed()).toEqual(['Parent']);
+    await owner.post(`/tasks/${child.body.id}/completion`, { completed: true });
+    expect(await listed()).toEqual([]);
+
+    // Archived tasks keep their place in search, and reopening brings them back.
+    expect(titles((await owner.get('/tasks?status=done')).body)).toEqual(['Single', 'Parent']);
+    await owner.post(`/tasks/${child.body.id}/completion`, { completed: false });
+    await owner.post(`/tasks/${single.body.id}/completion`, { completed: false });
+    expect(await listed()).toEqual(['Single', 'Parent']);
+  });
 });
 
 describe('ordering', () => {

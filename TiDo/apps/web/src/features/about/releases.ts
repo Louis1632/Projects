@@ -16,6 +16,45 @@ export interface Release {
 
 export const releases: Release[] = [
   {
+    version: '0.7.0',
+    date: '2026-10-30',
+    summary: 'More room for your tasks, especially on a phone.',
+    changes: [
+      {
+        kind: 'new',
+        text: 'Tasks are marked like work: a cross while still to do, and a tick once done.',
+      },
+      {
+        kind: 'new',
+        text: 'Once a task and all its subtasks are ticked off, it is archived from the list. It stays on the calendar, and Undo brings it straight back.',
+      },
+      {
+        kind: 'improved',
+        text: 'On a phone, one section fills the screen. Swipe sideways for the next one.',
+      },
+      {
+        kind: 'improved',
+        text: 'Hide the menu with ‹ and bring it back with ☰. On a phone the menu slides in from the left.',
+      },
+      {
+        kind: 'improved',
+        text: 'Filters fold away behind a Filters button, which shows how many are on.',
+      },
+      {
+        kind: 'improved',
+        text: 'List names are centred on the All tasks page.',
+      },
+      {
+        kind: 'improved',
+        text: 'Sign out now lives in the menu that opens when you tap your name.',
+      },
+      {
+        kind: 'improved',
+        text: 'The search box and New task button are gone. Add tasks from a section, or from a day on the calendar.',
+      },
+    ],
+  },
+  {
     version: '0.6.0',
     date: '2026-10-30',
     summary: 'Install TiDo as an app, with a new icon and a calmer look.',

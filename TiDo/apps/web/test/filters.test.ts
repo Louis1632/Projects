@@ -1,23 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { defaultFilters, filtersActive, taskMatches } from '../src/features/tasks/filters';
+import { activeFilterCount, defaultFilters, taskMatches } from '../src/features/tasks/filters';
 import { makeTask } from './fixtures';
 
 const today = '2026-06-15';
 
 describe('taskMatches', () => {
-  it('matches text in titles, notes, labels and subtasks', () => {
-    const task = makeTask({
-      title: 'Groceries',
-      notes: 'Woolworths',
-      labels: [{ id: 'l', name: 'Errands', color: null }],
-      subtasks: [makeTask({ title: 'Buy lemons' })],
-    });
-    for (const search of ['grocer', 'WOOLWORTHS', 'errand', 'lemon']) {
-      expect(taskMatches(task, { ...defaultFilters, search }, today)).toBe(true);
-    }
-    expect(taskMatches(task, { ...defaultFilters, search: 'petrol' }, today)).toBe(false);
-  });
-
   it('filters by status, including "not done"', () => {
     const done = makeTask({ status: 'done' });
     expect(taskMatches(done, { ...defaultFilters, status: 'open' }, today)).toBe(false);
@@ -53,8 +40,7 @@ describe('taskMatches', () => {
     expect(
       taskMatches(makeTask({ archivedAt: '2026-01-01T00:00:00Z' }), defaultFilters, today),
     ).toBe(false);
-    expect(filtersActive(defaultFilters)).toBe(false);
-    expect(filtersActive({ ...defaultFilters, search: 'x' })).toBe(false);
-    expect(filtersActive({ ...defaultFilters, priority: 'high' })).toBe(true);
+    expect(activeFilterCount(defaultFilters)).toBe(0);
+    expect(activeFilterCount({ ...defaultFilters, priority: 'high', due: 'today' })).toBe(2);
   });
 });

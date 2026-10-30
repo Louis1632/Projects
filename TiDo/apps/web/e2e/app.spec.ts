@@ -15,17 +15,21 @@ async function signIn(page: Page, email: string, password: string) {
   await expect(page.getByRole('heading', { name: 'All tasks' })).toBeVisible();
 }
 
+/** Creates a task due today from the calendar, where tasks with full details start, then returns. */
 async function createTask(
   page: Page,
   title: string,
   configure?: (dialog: ReturnType<Page['getByRole']>) => Promise<void>,
 ) {
-  await page.getByRole('button', { name: '+ New task' }).click();
+  const back = page.url();
+  await page.getByRole('link', { name: /Calendar/ }).click();
+  await page.locator('.calendar-day.today .day-number').click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Title').fill(title);
   if (configure) await configure(dialog);
   await dialog.getByRole('button', { name: 'Create task' }).click();
   await expect(dialog).toBeHidden();
+  await page.goto(back);
 }
 
 test('unauthenticated visitors are sent to sign in', async ({ page }) => {
@@ -60,8 +64,13 @@ test('owner completes setup and organises tasks', async ({ page }) => {
 
   await row.getByRole('button', { name: 'Complete Sort boxes' }).click();
   await expect(row.getByText('☑ 1/1')).toBeVisible();
+  // Ticking the task with every subtask done archives it from the list; Undo brings it back.
   await row.getByRole('button', { name: 'Complete Clean the garage' }).click();
-  await expect(row).toHaveClass(/completed/);
+  await expect(page.getByRole('status')).toContainText('“Clean the garage” is done and archived.');
+  await expect(row).toHaveCount(0);
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(row).toBeVisible();
+  await expect(row).not.toHaveClass(/completed/);
 
   // Sections are columns: add one with the + tile, drag a task into it, then drag that column
   // to the front by its grip.
@@ -208,6 +217,7 @@ test('recurring tasks appear on the calendar and can be handled per occurrence',
 
 test('signing out ends the session', async ({ page }) => {
   await signIn(page, 'owner@example.test', OWNER_PASSWORD);
+  await page.getByRole('button', { name: /Olive Owner/ }).click();
   await page.getByRole('button', { name: 'Sign out' }).click();
   await expect(page).toHaveURL(/\/login$/);
   await page.goto('/tasks');

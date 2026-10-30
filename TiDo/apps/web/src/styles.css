@@ -341,8 +341,21 @@ legend {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 16rem minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   min-height: 100vh;
+}
+
+/* The ☰ button shows and hides the sidebar; a computer gives it a column of its own. */
+.app-shell.nav-open {
+  grid-template-columns: 16rem minmax(0, 1fr);
+}
+
+.app-shell:not(.nav-open) > .sidebar {
+  display: none;
+}
+
+.nav-backdrop {
+  display: none;
 }
 
 .sidebar {
@@ -365,8 +378,14 @@ legend {
   padding: 0 0.5rem 0.75rem;
 }
 
-.menu-toggle {
-  display: none;
+.menu-close svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .sidebar-body {
@@ -523,19 +542,71 @@ legend {
 }
 
 .user-menu {
+  position: relative;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--border);
+}
+
+.user-button {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  padding: 0.6rem 0.4rem 0;
-  border-top: 1px solid var(--border);
+  width: 100%;
+  padding: 0.35rem 0.4rem;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+
+.user-button:hover,
+.user-button[aria-expanded='true'] {
+  background: var(--surface-2);
+}
+
+.user-caret {
+  color: var(--muted);
 }
 
 .user-details {
   display: grid;
   flex: 1;
   min-width: 0;
+}
+
+/* Opens upwards, since the user sits at the foot of the sidebar. */
+.account-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.25rem);
+  left: 0;
+  display: grid;
+  padding: 0.3rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.account-menu a,
+.account-menu button {
+  padding: 0.5rem 0.65rem;
+  border: none;
+  border-radius: 6px;
+  background: none;
   color: var(--text);
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
   text-decoration: none;
+}
+
+.account-menu a:hover,
+.account-menu button:hover {
+  background: var(--surface-2);
+  color: var(--accent);
 }
 
 .user-details strong,
@@ -562,43 +633,24 @@ legend {
 }
 
 .main-content {
+  position: relative;
   min-width: 0;
   padding: 1.25rem clamp(1rem, 3vw, 2.5rem) 3rem;
 }
 
+/* With the menu hidden, ☰ sits in the margin beside the page heading rather than above it. */
+.app-shell:not(.nav-open) .main-content {
+  padding-left: 3.75rem;
+}
+
 .topbar {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  margin-bottom: 1.5rem;
+  position: absolute;
+  top: 0.7rem;
+  left: 0.85rem;
 }
 
-.searchbox {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 0 0.75rem;
-  max-width: 34rem;
-  font-weight: 400;
-}
-
-.searchbox input {
-  border: none;
-  background: transparent;
-  padding-left: 0;
-}
-
-.searchbox input:focus-visible {
-  outline: none;
-}
-
-.searchbox:focus-within {
-  outline: 2px solid var(--focus);
-  outline-offset: 1px;
+.nav-open .menu-toggle {
+  visibility: hidden;
 }
 
 .notice {
@@ -653,6 +705,45 @@ legend {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--accent) !important;
+}
+
+/* The tasks page keeps Filters under its heading on a computer, and beside it on a phone. */
+.tasks-heading {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+}
+
+.filter-toggle:hover,
+.filter-toggle[aria-expanded='true'] {
+  background: var(--surface-2);
+}
+
+.filter-count {
+  min-width: 1.25rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.filters[hidden] {
+  display: none;
 }
 
 .filters {
@@ -720,6 +811,7 @@ legend {
 .project-block > h2 {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
 }
 
@@ -893,25 +985,68 @@ legend {
 }
 
 .check-button {
-  width: 1.4rem;
-  height: 1.4rem;
-  margin-top: 0.1rem;
-  border-radius: 999px;
-  border: 2px solid var(--muted);
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-top: 0.05rem;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
   background: transparent;
   display: grid;
   place-items: center;
-  font-size: 0.8rem;
-  color: var(--on-accent);
-}
-
-.check-button:hover {
-  border-color: var(--accent);
+  color: var(--muted);
 }
 
 .task-row.completed .check-button {
-  background: var(--accent);
-  border-color: var(--accent);
+  color: var(--success);
+}
+
+/* A cross for to do, a tick for done, drawn like a marking pen. */
+.tick-mark {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tick-mark .mark-tick,
+.tick-mark.done .mark-cross {
+  display: none;
+}
+
+.tick-mark.done .mark-tick {
+  display: inline;
+  stroke-width: 3;
+  stroke-dasharray: 1;
+  animation: draw-tick 0.25s ease-out;
+}
+
+@keyframes draw-tick {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+
+/* Hovering a cross previews the tick that clicking gives. */
+@media (hover: hover) {
+  button:hover > .tick-mark:not(.done) .mark-cross {
+    display: none;
+  }
+
+  button:hover > .tick-mark:not(.done) .mark-tick {
+    display: inline;
+    color: var(--success);
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tick-mark.done .mark-tick {
+    animation: none;
+  }
 }
 
 .task-main {
@@ -1031,7 +1166,26 @@ legend {
 }
 
 .subtask-check {
-  color: var(--accent);
+  display: inline-grid;
+  flex-shrink: 0;
+  width: 1.3rem;
+  height: 1.3rem;
+  padding: 0.1rem;
+  color: var(--muted);
+}
+
+.subtask.done .subtask-check {
+  color: var(--success);
+}
+
+.bin-icon {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .subtask-title {
@@ -1447,47 +1601,82 @@ legend {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .sidebar {
-    position: sticky;
-    height: auto;
-    max-height: 100vh;
-    z-index: 10;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-    padding: 0.6rem 1rem;
+  .app-shell.nav-open {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .sidebar-top {
-    padding: 0;
+  /* A drawer that slides in from the left, over the page. */
+  .sidebar,
+  .app-shell:not(.nav-open) > .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 30;
+    display: flex;
+    width: min(18rem, 85vw);
+    height: 100dvh;
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition:
+      transform 0.2s ease,
+      visibility 0.2s;
   }
 
-  .menu-toggle {
-    display: inline-grid;
+  .nav-open > .sidebar {
+    transform: none;
+    visibility: visible;
+    box-shadow: var(--shadow);
   }
 
-  .sidebar:not(.open) .sidebar-body,
-  .sidebar:not(.open) .new-list-form,
-  .sidebar:not(.open) .user-menu,
-  .sidebar:not(.open) .version-link,
-  .sidebar:not(.open) .theme-switch,
-  .sidebar:not(.open) .sidebar-spacer {
-    display: none;
+  .nav-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: rgb(0 0 0 / 0.4);
   }
 
-  .sidebar.open .sidebar-body {
-    margin-top: 0.5rem;
-  }
-
-  .main-content {
-    padding: 1rem 1rem 3rem;
+  .main-content,
+  .app-shell:not(.nav-open) .main-content {
+    padding: 0.75rem 1rem 1.5rem;
   }
 
   .topbar {
-    flex-wrap: wrap;
+    position: static;
+    margin: -0.4rem 0 0.25rem -0.5rem;
   }
 
-  .searchbox {
-    max-width: none;
+  /* Leave the screen to the list: its name, the Filters button and the sections. */
+  .screen {
+    gap: 0.75rem;
+  }
+
+  .screen-heading,
+  .tasks-heading {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .screen-heading p {
+    display: none;
+  }
+
+  /* One section fills the screen, with the edge of the next peeking in to swipe to. */
+  .section-columns {
+    margin-inline: -1rem;
+    padding-inline: 1rem;
+    scroll-padding-inline: 1rem;
+    scroll-snap-type: x mandatory;
+    gap: 0.75rem;
+  }
+
+  .section-columns > .section-card,
+  .section-columns > .add-section-form {
+    flex-basis: calc(100% - 1rem);
+    min-height: calc(100dvh - 9.5rem);
+  }
+
+  .section-columns > .add-section-tile {
+    scroll-snap-align: end;
   }
 
   .filters label {
@@ -1580,4 +1769,32 @@ legend {
 .change-kind.fixed {
   background: var(--success-soft);
   color: var(--success);
+}
+
+/* Toast ---------------------------------------------------------------- */
+
+.toast {
+  position: fixed;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  left: 50%;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  max-width: calc(100vw - 2rem);
+  padding: 0.6rem 0.6rem 0.6rem 1rem;
+  border-radius: var(--radius);
+  background: var(--text);
+  color: var(--bg);
+  box-shadow: var(--shadow);
+  transform: translateX(-50%);
+}
+
+.toast .text-button {
+  color: var(--bg);
+  text-decoration: underline;
+}
+
+.toast .text-button:hover {
+  background: rgb(127 127 127 / 0.25);
 }

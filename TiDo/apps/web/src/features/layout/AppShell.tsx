@@ -1,24 +1,32 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link, NavLink, Outlet, useMatch, useNavigate, useOutletContext } from 'react-router';
 import type { Project, SessionUser, Subtask, Task } from '@tido/contracts';
 import { api } from '../../lib/api';
 import { todayIn } from '../../lib/dates';
-import { useDashboard, useWorkspaceMutation } from '../../lib/queries';
+import { invalidateWorkspace, useDashboard, useWorkspaceMutation } from '../../lib/queries';
 import { buildInfo, useNewerBuildAvailable, useVersionSeen } from '../about/version';
 import { Brand, LoadingPage, useCurrentUser } from '../auth/RequireSession';
 import { TaskEditor } from '../tasks/TaskEditor';
+import { isPhone, useNavOpen } from './nav';
 import { ThemeSwitch } from './ThemeSwitch';
+import { UserMenu } from './UserMenu';
 
 export type EditorTarget =
   { mode: 'create'; sectionId?: string; dueDate?: string } | { mode: 'edit'; task: Task | Subtask };
 
+/** A short-lived message at the foot of the screen, optionally with an action such as Undo. */
+export interface Toast {
+  message: string;
+  action?: { label: string; run: () => Promise<unknown> };
+}
+
 export interface ShellContext {
   user: SessionUser;
   today: string;
-  search: string;
   openEditor: (target: EditorTarget) => void;
   notify: (message: string) => void;
+  announce: (toast: Toast) => void;
   markVersionSeen: () => void;
 }
 
@@ -29,11 +37,11 @@ export function AppShell() {
   const dashboard = useDashboard();
   const client = useQueryClient();
   const navigate = useNavigate();
-  const [search, setSearch] = useState('');
   const [editor, setEditor] = useState<EditorTarget | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [toast, setToast] = useState<Toast | null>(null);
   const [newList, setNewList] = useState('');
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [navOpen, setNavOpen] = useNavOpen();
   const today = todayIn(user.workspace.timezone);
   const version = useVersionSeen();
   const newerBuild = useNewerBuildAvailable();
@@ -43,6 +51,22 @@ export function AppShell() {
     api.updateProject(project.id, { archived: true, revision: project.revision }),
   );
   const openList = useMatch('/projects/:projectId')?.params.projectId;
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(null), 6000);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
+  const runToastAction = async (action: NonNullable<Toast['action']>) => {
+    setToast(null);
+    try {
+      await action.run();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Could not undo that.');
+    }
+    await invalidateWorkspace(client);
+  };
 
   const logout = async () => {
     try {
@@ -82,29 +106,35 @@ export function AppShell() {
   const context: ShellContext = {
     user,
     today,
-    search,
     openEditor: setEditor,
     notify: setNotice,
+    announce: setToast,
     markVersionSeen: version.markSeen,
   };
   const navClass = ({ isActive }: { isActive: boolean }) =>
     isActive ? 'nav-item active' : 'nav-item';
   const listClass = ({ isActive }: { isActive: boolean }) =>
     isActive ? 'project-link active' : 'project-link';
-  const closeMenu = () => setMenuOpen(false);
+  // On a phone the sidebar covers the page, so picking somewhere to go closes it.
+  const closeMenu = () => {
+    if (isPhone()) setNavOpen(false);
+  };
 
   return (
-    <div className="app-shell">
-      <aside className={menuOpen ? 'sidebar open' : 'sidebar'} aria-label="Workspace navigation">
+    <div className={navOpen ? 'app-shell nav-open' : 'app-shell'}>
+      <aside id="sidebar" className="sidebar" aria-label="Workspace navigation">
         <div className="sidebar-top">
           <Brand />
           <button
-            className="icon-button menu-toggle"
-            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((open) => !open)}
+            className="icon-button menu-close"
+            aria-label="Hide menu"
+            title="Hide menu"
+            aria-controls="sidebar"
+            onClick={() => setNavOpen(false)}
           >
-            {menuOpen ? '×' : '☰'}
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M15 6l-6 6 6 6" />
+            </svg>
           </button>
         </div>
         <nav className="sidebar-body" onClick={closeMenu}>
@@ -169,39 +199,21 @@ export function AppShell() {
             </>
           )}
         </Link>
-        <div className="user-menu">
-          <div className="avatar" aria-hidden="true">
-            {user.displayName.slice(0, 1).toUpperCase()}
-          </div>
-          <Link to="/account" className="user-details" onClick={closeMenu}>
-            <strong>{user.displayName}</strong>
-            <small>{user.role === 'owner' ? 'Workspace owner' : 'Member'}</small>
-          </Link>
-          <button
-            className="icon-button"
-            aria-label="Sign out"
-            title="Sign out"
-            onClick={() => void logout()}
-          >
-            ↪
-          </button>
-        </div>
+        <UserMenu user={user} onNavigate={closeMenu} onSignOut={() => void logout()} />
       </aside>
+      {navOpen && <div className="nav-backdrop" aria-hidden="true" onClick={closeMenu} />}
 
       <main className="main-content">
         <header className="topbar">
-          <label className="searchbox">
-            <span aria-hidden="true">⌕</span>
-            <span className="sr-only">Search tasks</span>
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search tasks"
-            />
-          </label>
-          <button className="primary-button" onClick={() => setEditor({ mode: 'create' })}>
-            + New task
+          {/* Hidden while the menu is open, which has its own ‹ to hide it again. */}
+          <button
+            className="icon-button menu-toggle"
+            aria-label="Show menu"
+            aria-controls="sidebar"
+            aria-expanded={navOpen}
+            onClick={() => setNavOpen(true)}
+          >
+            ☰
           </button>
         </header>
 
@@ -223,6 +235,17 @@ export function AppShell() {
         )}
         <Outlet context={context} />
       </main>
+
+      {toast && (
+        <div className="toast" role="status">
+          <span>{toast.message}</span>
+          {toast.action && (
+            <button className="text-button" onClick={() => void runToastAction(toast.action!)}>
+              {toast.action.label}
+            </button>
+          )}
+        </div>
+      )}
 
       {editor && (
         <TaskEditor

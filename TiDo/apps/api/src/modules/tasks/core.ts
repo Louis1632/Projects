@@ -1,4 +1,5 @@
-import { and, asc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
+import { and, asc, eq, exists, inArray, isNull, ne, or, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import type { Subtask, Task, TaskStatus, TaskUpdateInput } from '@tido/contracts';
 import {
   labels,
@@ -235,8 +236,21 @@ export async function applyTaskPatch(
 /**
  * Top-level tasks as the list view shows them: plain tasks plus, for each recurring
  * series, only its earliest open occurrence (so a daily chore does not flood the list).
+ * A task that is done with every subtask done is archived from the list: it leaves the
+ * board but stays in the calendar, search and history, and reopening it brings it back.
  */
 export function listedTaskCondition(exec: Executor, workspaceId: string) {
+  const subtask = alias(tasks, 'open_subtask');
+  const openSubtasks = exec
+    .select({ one: sql`1` })
+    .from(subtask)
+    .where(
+      and(
+        eq(subtask.parentTaskId, tasks.id),
+        isNull(subtask.archivedAt),
+        ne(subtask.status, 'done'),
+      ),
+    );
   const nextOccurrences = exec
     .selectDistinctOn([tasks.recurrenceSeriesId], { id: tasks.id })
     .from(tasks)
@@ -255,6 +269,7 @@ export function listedTaskCondition(exec: Executor, workspaceId: string) {
     isNull(tasks.parentTaskId),
     isNull(tasks.archivedAt),
     or(isNull(tasks.recurrenceSeriesId), inArray(tasks.id, nextOccurrences)),
+    or(ne(tasks.status, 'done'), exists(openSubtasks)),
   );
 }
 

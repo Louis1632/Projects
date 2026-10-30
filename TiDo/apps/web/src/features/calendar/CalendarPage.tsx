@@ -24,7 +24,7 @@ export function groupByDay(tasks: Task[]): Map<string, Task[]> {
 }
 
 export function CalendarPage() {
-  const { today, search, openEditor } = useShell();
+  const { today, openEditor } = useShell();
   const dashboard = useDashboard().data!;
   const [month, setMonth] = useState(() => startOfMonth(today));
   const [projectId, setProjectId] = useState('all');
@@ -33,13 +33,12 @@ export function CalendarPage() {
   const monthTasks = useCalendar(grid[0]!, grid[41]!);
   const agendaTasks = useCalendar(today, addDays(today, 30));
 
-  const filter = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return (task: Task) =>
+  const filter = useMemo(
+    () => (task: Task) =>
       (projectId === 'all' || task.projectId === projectId) &&
-      (assigneeId === 'all' || task.assigneeId === assigneeId) &&
-      (!query || task.title.toLowerCase().includes(query));
-  }, [projectId, assigneeId, search]);
+      (assigneeId === 'all' || task.assigneeId === assigneeId),
+    [projectId, assigneeId],
+  );
 
   const byDay = groupByDay((monthTasks.data ?? []).filter(filter));
   const agenda = (agendaTasks.data ?? []).filter((task) => filter(task) && task.status !== 'done');
