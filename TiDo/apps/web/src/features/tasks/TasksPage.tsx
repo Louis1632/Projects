@@ -142,7 +142,7 @@ export function TasksPage() {
 
   return (
     <section className="screen">
-      <div className="screen-heading">
+      <div className="screen-heading tasks-heading">
         <div>
           <p className="eyebrow">Shared workspace</p>
           <h1>{single ? single.name : 'All tasks'}</h1>

@@ -17,6 +17,7 @@ import type { EditorTarget } from '../layout/AppShell';
 import { RecurrenceEditor } from '../recurrence/RecurrenceEditor';
 import { ScopeDialog } from '../recurrence/ScopeDialog';
 import { priorityLabels, statusLabels } from './labels';
+import { TickMark } from './TickMark';
 
 interface Props {
   target: EditorTarget;
@@ -480,7 +481,7 @@ export function TaskEditor({ target, dashboard, today, onClose, onOpenTask }: Pr
                     }
                     onClick={() => void toggleSubtask(subtask)}
                   >
-                    {subtask.status === 'done' ? '✓' : '○'}
+                    <TickMark done={subtask.status === 'done'} />
                   </button>
                   <button className="subtask-title" onClick={() => onOpenTask(subtask)}>
                     {subtask.title}
@@ -488,15 +489,20 @@ export function TaskEditor({ target, dashboard, today, onClose, onOpenTask }: Pr
                   <button
                     className="icon-button small"
                     aria-label={`Delete ${subtask.title}`}
+                    title="Delete subtask"
                     onClick={() => void removeSubtask(subtask)}
                   >
-                    ×
+                    <svg className="bin-icon" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V4h6v3" />
+                    </svg>
                   </button>
                 </li>
               ))}
               {pendingSubtasks.map((subtaskTitle, index) => (
                 <li key={`${subtaskTitle}-${index}`} className="subtask">
-                  <span aria-hidden="true">○</span>
+                  <span className="subtask-check">
+                    <TickMark done={false} />
+                  </span>
                   <span className="subtask-title">{subtaskTitle}</span>
                   <button
                     className="icon-button small"

@@ -378,8 +378,14 @@ legend {
   padding: 0 0.5rem 0.75rem;
 }
 
-.menu-close {
-  display: none;
+.menu-close svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .sidebar-body {
@@ -627,15 +633,24 @@ legend {
 }
 
 .main-content {
+  position: relative;
   min-width: 0;
   padding: 1.25rem clamp(1rem, 3vw, 2.5rem) 3rem;
 }
 
+/* With the menu hidden, ☰ sits in the margin beside the page heading rather than above it. */
+.app-shell:not(.nav-open) .main-content {
+  padding-left: 3.75rem;
+}
+
 .topbar {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  margin: -0.4rem 0 0.75rem -0.5rem;
+  position: absolute;
+  top: 0.7rem;
+  left: 0.85rem;
+}
+
+.nav-open .menu-toggle {
+  visibility: hidden;
 }
 
 .notice {
@@ -690,6 +705,13 @@ legend {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--accent) !important;
+}
+
+/* The tasks page keeps Filters under its heading on a computer, and beside it on a phone. */
+.tasks-heading {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
 }
 
 .filter-toggle {
@@ -789,6 +811,7 @@ legend {
 .project-block > h2 {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
 }
 
@@ -962,25 +985,68 @@ legend {
 }
 
 .check-button {
-  width: 1.4rem;
-  height: 1.4rem;
-  margin-top: 0.1rem;
-  border-radius: 999px;
-  border: 2px solid var(--muted);
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-top: 0.05rem;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
   background: transparent;
   display: grid;
   place-items: center;
-  font-size: 0.8rem;
-  color: var(--on-accent);
-}
-
-.check-button:hover {
-  border-color: var(--accent);
+  color: var(--muted);
 }
 
 .task-row.completed .check-button {
-  background: var(--accent);
-  border-color: var(--accent);
+  color: var(--success);
+}
+
+/* A cross for to do, a tick for done, drawn like a marking pen. */
+.tick-mark {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tick-mark .mark-tick,
+.tick-mark.done .mark-cross {
+  display: none;
+}
+
+.tick-mark.done .mark-tick {
+  display: inline;
+  stroke-width: 3;
+  stroke-dasharray: 1;
+  animation: draw-tick 0.25s ease-out;
+}
+
+@keyframes draw-tick {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+
+/* Hovering a cross previews the tick that clicking gives. */
+@media (hover: hover) {
+  button:hover > .tick-mark:not(.done) .mark-cross {
+    display: none;
+  }
+
+  button:hover > .tick-mark:not(.done) .mark-tick {
+    display: inline;
+    color: var(--success);
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tick-mark.done .mark-tick {
+    animation: none;
+  }
 }
 
 .task-main {
@@ -1100,7 +1166,26 @@ legend {
 }
 
 .subtask-check {
-  color: var(--accent);
+  display: inline-grid;
+  flex-shrink: 0;
+  width: 1.3rem;
+  height: 1.3rem;
+  padding: 0.1rem;
+  color: var(--muted);
+}
+
+.subtask.done .subtask-check {
+  color: var(--success);
+}
+
+.bin-icon {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .subtask-title {
@@ -1542,10 +1627,6 @@ legend {
     box-shadow: var(--shadow);
   }
 
-  .menu-close {
-    display: inline-grid;
-  }
-
   .nav-backdrop {
     display: block;
     position: fixed;
@@ -1554,12 +1635,14 @@ legend {
     background: rgb(0 0 0 / 0.4);
   }
 
-  .main-content {
+  .main-content,
+  .app-shell:not(.nav-open) .main-content {
     padding: 0.75rem 1rem 1.5rem;
   }
 
   .topbar {
-    margin-bottom: 0.25rem;
+    position: static;
+    margin: -0.4rem 0 0.25rem -0.5rem;
   }
 
   /* Leave the screen to the list: its name, the Filters button and the sections. */
@@ -1567,7 +1650,9 @@ legend {
     gap: 0.75rem;
   }
 
-  .screen-heading {
+  .screen-heading,
+  .tasks-heading {
+    flex-direction: row;
     align-items: center;
   }
 

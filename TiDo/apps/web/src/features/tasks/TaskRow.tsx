@@ -4,6 +4,7 @@ import { prettyDay } from '../../lib/dates';
 import { describeRule } from '../../lib/recurrence';
 import { priorityLabels } from './labels';
 import { QuickAdd } from './QuickAdd';
+import { TickMark } from './TickMark';
 
 interface TaskRowProps {
   task: Task;
@@ -49,7 +50,7 @@ export function TaskRow({
         aria-label={done ? `Reopen ${task.title}` : `Complete ${task.title}`}
         onClick={() => onToggle(task)}
       >
-        {done ? '✓' : ''}
+        <TickMark done={done} />
       </button>
       <button className="task-main" onClick={() => onEdit(task)}>
         <span className="task-title">{task.title}</span>
@@ -119,7 +120,7 @@ export function TaskRow({
                 }
                 onClick={() => onToggle(subtask)}
               >
-                {subtask.status === 'done' ? '✓' : '○'}
+                <TickMark done={subtask.status === 'done'} />
               </button>
               <button className="subtask-title" onClick={() => onEdit(subtask)}>
                 {subtask.title}

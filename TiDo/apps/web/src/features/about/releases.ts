@@ -21,16 +21,24 @@ export const releases: Release[] = [
     summary: 'More room for your tasks, especially on a phone.',
     changes: [
       {
+        kind: 'new',
+        text: 'Tasks are marked like work: a cross while still to do, and a tick once done.',
+      },
+      {
         kind: 'improved',
         text: 'On a phone, one section fills the screen. Swipe sideways for the next one.',
       },
       {
         kind: 'improved',
-        text: 'The ☰ button shows and hides the menu. On a phone the menu slides in from the left.',
+        text: 'Hide the menu with ‹ and bring it back with ☰. On a phone the menu slides in from the left.',
       },
       {
         kind: 'improved',
         text: 'Filters fold away behind a Filters button, which shows how many are on.',
+      },
+      {
+        kind: 'improved',
+        text: 'List names are centred on the All tasks page.',
       },
       {
         kind: 'improved',

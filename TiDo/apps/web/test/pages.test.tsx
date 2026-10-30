@@ -326,10 +326,9 @@ describe('list and section controls', () => {
   it('hides the sidebar with the menu button and remembers it', async () => {
     signedIn();
     renderApp('/tasks');
-    const toggle = await screen.findByRole('button', { name: 'Hide menu' });
+    const toggle = await screen.findByRole('button', { name: 'Show menu' });
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
-    await userEvent.click(toggle);
-    expect(toggle).toHaveAccessibleName('Show menu');
+    await userEvent.click(screen.getByRole('button', { name: 'Hide menu' }));
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
     expect(localStorage.getItem('tido.navHidden')).toBe('true');
     await userEvent.click(toggle);

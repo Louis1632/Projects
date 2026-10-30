@@ -102,10 +102,14 @@ export function AppShell() {
           <Brand />
           <button
             className="icon-button menu-close"
-            aria-label="Close menu"
+            aria-label="Hide menu"
+            title="Hide menu"
+            aria-controls="sidebar"
             onClick={() => setNavOpen(false)}
           >
-            ×
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M15 6l-6 6 6 6" />
+            </svg>
           </button>
         </div>
         <nav className="sidebar-body" onClick={closeMenu}>
@@ -176,12 +180,13 @@ export function AppShell() {
 
       <main className="main-content">
         <header className="topbar">
+          {/* Hidden while the menu is open, which has its own ‹ to hide it again. */}
           <button
             className="icon-button menu-toggle"
-            aria-label={navOpen ? 'Hide menu' : 'Show menu'}
+            aria-label="Show menu"
             aria-controls="sidebar"
             aria-expanded={navOpen}
-            onClick={() => setNavOpen(!navOpen)}
+            onClick={() => setNavOpen(true)}
           >
             ☰
           </button>
