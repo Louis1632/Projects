@@ -16,6 +16,17 @@ export interface Release {
 
 export const releases: Release[] = [
   {
+    version: '0.5.1',
+    date: '2026-10-30',
+    summary: 'A friendlier empty list.',
+    changes: [
+      {
+        kind: 'improved',
+        text: 'Empty sections now invite you to add your first task.',
+      },
+    ],
+  },
+  {
     version: '0.5.0',
     date: '2026-10-30',
     summary: 'A fresh blue look, with a light and dark theme you can choose.',
