@@ -37,4 +37,9 @@ export default tseslint.config(
     plugins: { 'react-hooks': reactHooks },
     rules: reactHooks.configs.recommended.rules,
   },
+  {
+    // k6 load-test scripts (loadtest/): they run in k6, not Node, and use its globals.
+    files: ['loadtest/**/*.js'],
+    languageOptions: { globals: { __ENV: 'readonly', __VU: 'readonly', __ITER: 'readonly' } },
+  },
 );

@@ -64,6 +64,42 @@ The baseline, recorded on 2026-10-29 by the first review, so later changes don't
 
 ## Entries
 
+### TIDO-SEC-013: The autoscaled load-test environment is kept away from staging and production
+
+_2026-10-30 · Low · Fixed (by keeping autoscaling out of staging and production)_
+
+**What was wrong:** a new throwaway environment, `tido-loadtest`, autoscales the API from 1 to 4
+pods so autoscaling can be learned and the app's limits explored (`deploy/scripts/loadtest.sh`,
+`docs/runbooks/load-testing.md`). Two of TiDo's defences are counted _per API process_: login
+throttling (ten failed sign-ins locks an account, `modules/auth/login-throttle.ts`) and the
+`@fastify/rate-limit` request limit. With four pods, a client spread across them gets up to four
+times as many tries before either limit bites, and the throttle's memory is lost whenever a pod
+is replaced.
+
+**Why it mattered:** on its own this is only a learning setup, reachable by nobody (the overlay
+has no ingress, and its load generator runs inside the namespace). The risk would be real only
+if the same autoscaling were copied onto staging or production, which still run a single API
+replica for exactly this reason (the existing accepted risk, "Login throttling lives in the API
+process… revisit when the API is scaled out", and the comment in
+`deploy/k8s/base/api-deployment.yaml`).
+
+**Fix:** the HorizontalPodAutoscaler lives only in `deploy/k8s/overlays/loadtest`, never in the
+base or the staging/production overlays. Its manifest
+(`deploy/k8s/overlays/loadtest/autoscaling.yaml`) says so, and points back here. Scaling out for
+real stays blocked until login throttling and rate limiting move to shared (database or Redis)
+state.
+
+**How it was verified (2026-10-30):** `grep -rl HorizontalPodAutoscaler deploy/k8s` lists only
+the loadtest overlay. The loadtest overlay builds with no Ingress or tailnet-only Middleware
+(`kubectl kustomize deploy/k8s/overlays/loadtest`). The k6 authorization checks
+(`loadtest/security.js`, `MODE=security`) confirm the per-request defences — auth required, CSRF
+header required, foreign Origin refused, owner-only actions refused to members — still hold while
+the environment is under load.
+
+**Lesson:** when a defence keeps per-process state, horizontal scaling quietly multiplies what it
+was meant to cap. Decide where scaling is allowed at the same time as you add the autoscaler, and
+write the limit down next to it, not only in a runbook.
+
 ### TIDO-SEC-012: The tailnet allow-list refused every device except the PC itself
 
 _2026-10-30 · Medium · Fixed (with HOMELAB-SEC-009)_

@@ -1,0 +1,53 @@
+# Load testing: a throwaway copy of TiDo in namespace tido-loadtest, with the API autoscaled.
+# It has no ingress: the k6 load generator runs as a Job inside the namespace and calls the
+# services directly, so Kubernetes spreads its requests over every API pod. It runs the images
+# staging runs. Managed by deploy/scripts/loadtest.sh (up, run, watch, down), which adds those
+# image digests; see docs/runbooks/load-testing.md.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: tido-loadtest
+resources:
+  - namespace.yaml
+  - ../../base
+  - autoscaling.yaml
+  - network-policy.yaml
+patches:
+  - path: config-patch.yaml
+  # Nothing outside the cluster can reach this environment.
+  - patch: |-
+      $patch: delete
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: tido
+  - patch: |-
+      $patch: delete
+      apiVersion: traefik.io/v1alpha1
+      kind: Middleware
+      metadata:
+        name: tailnet-only
+  # The autoscaler owns the replica count, so applying the overlay must not reset it to 1.
+  # Each API pod gets at most one CPU core, so serving more load needs more pods: that is what
+  # makes autoscaling visible on a single machine.
+  - target:
+      kind: Deployment
+      name: tido-api
+    patch: |-
+      - op: remove
+        path: /spec/replicas
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: 250m
+            memory: 192Mi
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+  - target:
+      kind: Cluster
+      name: tido-db
+    patch: |-
+      - op: replace
+        path: /spec/storage/size
+        value: 2Gi

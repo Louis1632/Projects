@@ -1,0 +1,38 @@
+# Adds API pods when their average CPU use passes 60% of what each pod requests (250m), up to
+# maxReplicas. K3s's metrics-server supplies the CPU figures (`kubectl top pods`).
+# Not for staging or production yet: login throttling and rate limits are counted per pod, so
+# more pods means more guesses allowed (TIDO-SEC-013 in docs/security.md).
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: tido-api
+  labels:
+    tido.io/phase: app
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: tido-api
+  minReplicas: 1
+  maxReplicas: 4
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 15
+    # Kubernetes waits 5 minutes by default before removing pods; 1 minute is quicker to watch.
+    scaleDown:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 30
