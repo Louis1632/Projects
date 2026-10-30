@@ -16,6 +16,21 @@ export interface Release {
 
 export const releases: Release[] = [
   {
+    version: '0.6.0',
+    date: '2026-10-30',
+    summary: 'Install TiDo as an app, with a new icon and a calmer look.',
+    changes: [
+      {
+        kind: 'new',
+        text: 'On Android, open TiDo in Chrome and choose Install app from the menu. TiDo gets its own icon and opens in its own window.',
+      },
+      {
+        kind: 'improved',
+        text: 'A new blue-grey colour, matching the new TiDo icon.',
+      },
+    ],
+  },
+  {
     version: '0.5.1',
     date: '2026-10-30',
     summary: 'A friendlier empty list.',

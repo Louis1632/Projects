@@ -6,9 +6,7 @@ import { useSession } from '../../lib/queries';
 export function Brand() {
   return (
     <div className="brand">
-      <span className="brand-mark" aria-hidden="true">
-        ✓
-      </span>
+      <img className="brand-mark" src="/icon.svg" alt="" />
       <span>TiDo</span>
     </div>
   );
