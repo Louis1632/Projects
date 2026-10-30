@@ -1,10 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link, NavLink, Outlet, useMatch, useNavigate, useOutletContext } from 'react-router';
 import type { Project, SessionUser, Subtask, Task } from '@tido/contracts';
 import { api } from '../../lib/api';
 import { todayIn } from '../../lib/dates';
-import { useDashboard, useWorkspaceMutation } from '../../lib/queries';
+import { invalidateWorkspace, useDashboard, useWorkspaceMutation } from '../../lib/queries';
 import { buildInfo, useNewerBuildAvailable, useVersionSeen } from '../about/version';
 import { Brand, LoadingPage, useCurrentUser } from '../auth/RequireSession';
 import { TaskEditor } from '../tasks/TaskEditor';
@@ -15,11 +15,18 @@ import { UserMenu } from './UserMenu';
 export type EditorTarget =
   { mode: 'create'; sectionId?: string; dueDate?: string } | { mode: 'edit'; task: Task | Subtask };
 
+/** A short-lived message at the foot of the screen, optionally with an action such as Undo. */
+export interface Toast {
+  message: string;
+  action?: { label: string; run: () => Promise<unknown> };
+}
+
 export interface ShellContext {
   user: SessionUser;
   today: string;
   openEditor: (target: EditorTarget) => void;
   notify: (message: string) => void;
+  announce: (toast: Toast) => void;
   markVersionSeen: () => void;
 }
 
@@ -32,6 +39,7 @@ export function AppShell() {
   const navigate = useNavigate();
   const [editor, setEditor] = useState<EditorTarget | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [toast, setToast] = useState<Toast | null>(null);
   const [newList, setNewList] = useState('');
   const [navOpen, setNavOpen] = useNavOpen();
   const today = todayIn(user.workspace.timezone);
@@ -43,6 +51,22 @@ export function AppShell() {
     api.updateProject(project.id, { archived: true, revision: project.revision }),
   );
   const openList = useMatch('/projects/:projectId')?.params.projectId;
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(null), 6000);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
+  const runToastAction = async (action: NonNullable<Toast['action']>) => {
+    setToast(null);
+    try {
+      await action.run();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Could not undo that.');
+    }
+    await invalidateWorkspace(client);
+  };
 
   const logout = async () => {
     try {
@@ -84,6 +108,7 @@ export function AppShell() {
     today,
     openEditor: setEditor,
     notify: setNotice,
+    announce: setToast,
     markVersionSeen: version.markSeen,
   };
   const navClass = ({ isActive }: { isActive: boolean }) =>
@@ -210,6 +235,17 @@ export function AppShell() {
         )}
         <Outlet context={context} />
       </main>
+
+      {toast && (
+        <div className="toast" role="status">
+          <span>{toast.message}</span>
+          {toast.action && (
+            <button className="text-button" onClick={() => void runToastAction(toast.action!)}>
+              {toast.action.label}
+            </button>
+          )}
+        </div>
+      )}
 
       {editor && (
         <TaskEditor

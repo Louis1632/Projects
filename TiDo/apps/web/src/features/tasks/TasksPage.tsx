@@ -14,7 +14,7 @@ type Dragged = { kind: 'section'; section: Section } | { kind: 'task'; task: Tas
 
 export function TasksPage() {
   const { projectId } = useParams();
-  const { today, openEditor, notify } = useShell();
+  const { today, openEditor, notify, announce } = useShell();
   const dashboard = useDashboard().data!;
   const [filters, setFilters] = useState<TaskFilters>(defaultFilters);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -57,6 +57,29 @@ export function TasksPage() {
       repeatSubtask: !!input.task.recurrence,
     }),
   );
+
+  /**
+   * Ticks a task or subtask. Ticking the last open part of a task archives it from the
+   * list (the API leaves it out), so say so and offer to undo. Repeating tasks are left
+   * out: ticking one simply shows the next occurrence.
+   */
+  const tick = (item: Task | Subtask, task: Task) => {
+    const others = task.subtasks.filter((subtask) => subtask.id !== item.id);
+    const archives =
+      item.status !== 'done' &&
+      !task.recurrence &&
+      (item.id === task.id || task.status === 'done') &&
+      others.every((subtask) => subtask.status === 'done');
+    void run(
+      toggle.mutateAsync(item).then(() => {
+        if (!archives) return;
+        announce({
+          message: `“${task.title}” is done and archived.`,
+          action: { label: 'Undo', run: () => api.completeTask(item.id, false) },
+        });
+      }),
+    );
+  };
 
   const run = (promise: Promise<unknown>) =>
     promise.catch((error: unknown) =>
@@ -340,7 +363,7 @@ export function TasksPage() {
                         members={dashboard.members}
                         today={today}
                         onEdit={(item) => openEditor({ mode: 'edit', task: item })}
-                        onToggle={(item) => void run(toggle.mutateAsync(item))}
+                        onToggle={(item) => tick(item, task)}
                         onAddSubtask={(item, title) =>
                           save(addSubtask.mutateAsync({ task: item, title }))
                         }

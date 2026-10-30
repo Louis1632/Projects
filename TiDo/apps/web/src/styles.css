@@ -1770,3 +1770,31 @@ legend {
   background: var(--success-soft);
   color: var(--success);
 }
+
+/* Toast ---------------------------------------------------------------- */
+
+.toast {
+  position: fixed;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  left: 50%;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  max-width: calc(100vw - 2rem);
+  padding: 0.6rem 0.6rem 0.6rem 1rem;
+  border-radius: var(--radius);
+  background: var(--text);
+  color: var(--bg);
+  box-shadow: var(--shadow);
+  transform: translateX(-50%);
+}
+
+.toast .text-button {
+  color: var(--bg);
+  text-decoration: underline;
+}
+
+.toast .text-button:hover {
+  background: rgb(127 127 127 / 0.25);
+}

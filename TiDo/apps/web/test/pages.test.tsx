@@ -114,6 +114,44 @@ describe('task list', () => {
     );
   });
 
+  it('archives a finished task and offers to undo it', async () => {
+    const id = tasks[0]!.id;
+    const calls = mockApi({
+      'GET /auth/me': () => ({ body: user }),
+      'GET /dashboard': () => ({ body: makeDashboard(tasks) }),
+      [`POST /tasks/${id}/completion`]: ({ body }) => ({
+        body: { ...tasks[0], status: (body as { completed: boolean }).completed ? 'done' : 'todo' },
+      }),
+    });
+    renderApp('/tasks');
+    await userEvent.click(await screen.findByRole('button', { name: 'Complete Mow lawn' }));
+    expect(await screen.findByRole('status')).toHaveTextContent('“Mow lawn” is done and archived.');
+    await userEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    await waitFor(() =>
+      expect(calls).toContainEqual({
+        method: 'POST',
+        path: `/tasks/${id}/completion`,
+        body: { completed: false },
+      }),
+    );
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('keeps a done task with open subtasks without announcing an archive', async () => {
+    const parent = tasks[1]!;
+    mockApi({
+      'GET /auth/me': () => ({ body: user }),
+      'GET /dashboard': () => ({
+        body: makeDashboard([{ ...parent, subtasks: [makeTask({ title: 'Find invoice' })] }]),
+      }),
+      [`POST /tasks/${parent.id}/completion`]: () => ({ body: { ...parent, status: 'done' } }),
+    });
+    renderApp('/tasks');
+    await userEvent.click(await screen.findByRole('button', { name: 'Complete Pay rates' }));
+    await waitFor(() => expect(screen.getByText('Pay rates')).toBeInTheDocument());
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
   it('hides owner-only navigation from members', async () => {
     mockApi({
       'GET /auth/me': () => ({ body: { ...user, role: 'member' } }),

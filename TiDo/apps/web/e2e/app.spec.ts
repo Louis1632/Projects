@@ -64,8 +64,13 @@ test('owner completes setup and organises tasks', async ({ page }) => {
 
   await row.getByRole('button', { name: 'Complete Sort boxes' }).click();
   await expect(row.getByText('☑ 1/1')).toBeVisible();
+  // Ticking the task with every subtask done archives it from the list; Undo brings it back.
   await row.getByRole('button', { name: 'Complete Clean the garage' }).click();
-  await expect(row).toHaveClass(/completed/);
+  await expect(page.getByRole('status')).toContainText('“Clean the garage” is done and archived.');
+  await expect(row).toHaveCount(0);
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(row).toBeVisible();
+  await expect(row).not.toHaveClass(/completed/);
 
   // Sections are columns: add one with the + tile, drag a task into it, then drag that column
   // to the front by its grip.

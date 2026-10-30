@@ -25,6 +25,10 @@ export const releases: Release[] = [
         text: 'Tasks are marked like work: a cross while still to do, and a tick once done.',
       },
       {
+        kind: 'new',
+        text: 'Once a task and all its subtasks are ticked off, it is archived from the list. It stays on the calendar, and Undo brings it straight back.',
+      },
+      {
         kind: 'improved',
         text: 'On a phone, one section fills the screen. Swipe sideways for the next one.',
       },
