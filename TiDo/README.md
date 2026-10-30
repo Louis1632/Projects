@@ -65,7 +65,7 @@ Be careful in production: there are no backups yet (`docs/runbooks/production-ga
 | -------------- | ---------------------------------------------------------------------------------- |
 | Image registry | http://localhost:5000/v2/_catalog (Docker container `tido-registry`)               |
 | Pods           | `kubectl get pods -n tido-staging` / `-n tido-production`, or Portainer            |
-| Runbooks       | `docs/runbooks/` (releases, production, backups, observability)                    |
+| Runbooks       | `docs/runbooks/` (making a change, releases, production, backups, observability)   |
 | New PC         | Rebuild everything from the repos: homelab-platform `docs/rebuild-from-scratch.md` |
 | Security log   | [`docs/security.md`](docs/security.md): every finding, fix and lesson              |
 
@@ -114,8 +114,11 @@ pnpm dev                        # API on :3000, web on http://localhost:5173
 API documentation: http://localhost:3000/docs (development only).
 
 To step through the code, open the `TiDo` folder in VS Code and use the **Run and Debug**
-configurations in `.vscode/`. `docs/runbooks/first-change.md` walks through a change from the
-debugger to production.
+configurations in `.vscode/`.
+
+**Making a change:** [`docs/runbooks/making-a-change.md`](docs/runbooks/making-a-change.md) is
+the checklist for taking a change from the debugger through staging to production, with fixes
+for the usual snags.
 
 ## Checks
 
