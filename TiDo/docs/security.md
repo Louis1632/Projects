@@ -135,8 +135,8 @@ The staging overlay renders the new host, port, cookie name and middleware. Agai
   CSRF check, and the new origin gets past it (400, for the empty body).
 
 From a phone with Tailscale on, staging first answered 403. That turned out to be Tailscale's
-source NAT (TIDO-SEC-012). After that fix, the phone loads staging. Still to confirm by hand:
-signing in to staging leaves production signed in in the same browser.
+source NAT (TIDO-SEC-012). After that fix, the phone loads staging, and signing in to staging
+leaves production signed in in the same browser, so the separate cookie names work.
 
 **Lesson:** "only this machine can reach it" was true of the name, not of the service. Give every
 environment the same access control as production, even a test one. And sharing a host name
