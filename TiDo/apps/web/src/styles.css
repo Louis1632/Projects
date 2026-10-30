@@ -2,10 +2,10 @@
   /* Every colour pairs a light and a dark value; the scheme comes from the device, or
      from the theme chosen in the sidebar (data-theme on <html>). */
   color-scheme: light dark;
-  --accent: light-dark(#1d4ed8, #60a5fa);
-  --accent-strong: light-dark(#1e3a8a, #93c5fd);
-  --accent-soft: light-dark(#e8effd, #1c2a42);
-  --on-accent: light-dark(#ffffff, #0f172a);
+  --accent: light-dark(#2a3247, #c9d4f2);
+  --accent-strong: light-dark(#1a2030, #e4e9f9);
+  --accent-soft: light-dark(#e3e7f0, #262d3f);
+  --on-accent: light-dark(#ffffff, #141416);
   --bg: light-dark(#f6f6f7, #141416);
   --surface: light-dark(#ffffff, #1f1f23);
   --surface-2: light-dark(#f0f0f2, #2a2a30);
