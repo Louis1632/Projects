@@ -104,6 +104,14 @@ test('owner completes setup and organises tasks', async ({ page }) => {
   await expect(details).toBeHidden();
   await expect(thisWeek.getByTestId('task-row').first()).toContainText('◷');
 
+  // The theme is chosen in the sidebar and remembered after a reload.
+  const theme = page.getByRole('group', { name: 'Theme' });
+  await theme.getByRole('button', { name: 'Dark' }).click();
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await theme.getByRole('button', { name: 'System' }).click();
+  await expect(page.locator('html')).not.toHaveAttribute('data-theme', /./);
+
   // The one-time setup link cannot be reused.
   await page.context().clearCookies();
   await page.goto(new URL(ownerSetupUrl).pathname);

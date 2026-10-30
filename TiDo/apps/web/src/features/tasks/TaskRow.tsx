@@ -75,7 +75,7 @@ export function TaskRow({
             <span
               className="label-chip"
               key={label.id}
-              style={{ '--label-color': label.color ?? 'var(--teal)' } as CSSProperties}
+              style={{ '--label-color': label.color ?? 'var(--accent)' } as CSSProperties}
             >
               {label.name}
             </span>

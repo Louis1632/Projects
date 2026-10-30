@@ -1,0 +1,35 @@
+{
+  // Terminal → Run Task. The debug configurations in launch.json start these for you.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Database: start",
+      "type": "shell",
+      "command": "docker compose -f deploy/compose/docker-compose.yml up -d --wait",
+      "presentation": { "reveal": "silent" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Web: Vite dev server",
+      "type": "shell",
+      "command": "pnpm dev:web",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": { "regexp": "^x^" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "VITE",
+          "endsPattern": "Local:"
+        }
+      }
+    },
+    {
+      "label": "Checks: format, lint, typecheck, unit tests",
+      "type": "shell",
+      "command": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test",
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": ["$tsc"]
+    }
+  ]
+}
