@@ -108,8 +108,28 @@ kubectl -n tido-loadtest get pods -l app.kubernetes.io/name=tido-api -w
 kubectl -n tido-loadtest top pods
 ```
 
-In Grafana, the TiDo dashboard works here too: set `namespace` to `tido-loadtest` to see requests
-per second, error rate and p95 latency while the test runs.
+## Watching it in Grafana
+
+The load-test namespace is wired into the same monitoring stack as staging and production, so you
+can watch the effect of a run on every signal:
+
+- **Dashboard:** open **TiDo Overview** and set the `namespace` variable to `tido-loadtest` (it
+  appears there on its own while the namespace exists). Requests per second, error rate, p95
+  latency by route, CPU and memory — all for the load-test pods.
+- **Logs:** Explore → Loki, `{app="tido-api", namespace="tido-loadtest"}`. Add `| json` and, say,
+  `responseTime > 300` to watch slow requests pile up under load.
+- **Traces:** Explore → Tempo, service `tido-api`, namespace `tido-loadtest`, to see a slow
+  request broken down.
+- **Autoscaling vs. the request rate:** put the dashboard's requests-per-second panel next to
+  `loadtest.sh watch` and you can see pods being added as the rate climbs.
+
+Metrics come from the two PodMonitors in `deploy/observability/pod-monitors.yaml`, which now
+include `tido-loadtest`. Logs and traces need nothing extra: Alloy already reads every pod's
+logs, and the load-test API sends traces to the same collector as the other environments.
+
+The TiDo **alerts are deliberately not applied to `tido-loadtest`** — a load test is supposed to
+be slow and error-prone, and the namespace is usually gone, so alerting on it would only cry
+wolf (`deploy/observability/tido-alerts.yaml`). Staging and production still alert as before.
 
 ## Finding the limits
 

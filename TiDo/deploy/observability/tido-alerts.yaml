@@ -1,5 +1,9 @@
 # TiDo alerts. The chart's default rules already cover crash-looping pods, full volumes,
 # node pressure and down targets; these add what only TiDo's own metrics can tell.
+# Every rule is scoped to tido-staging and tido-production. The tido-loadtest namespace is
+# scraped for the dashboard (pod-monitors.yaml) but excluded here: a load test is meant to push
+# latency and errors up, and the namespace is usually torn down, so alerting on it would be
+# nothing but noise (TIDO-SEC-013, docs/runbooks/load-testing.md).
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
@@ -10,7 +14,7 @@ spec:
     - name: tido
       rules:
         - alert: TidoApiDown
-          expr: up{job="tido-api"} == 0
+          expr: up{job="tido-api", namespace=~"tido-staging|tido-production"} == 0
           for: 2m
           labels:
             severity: critical
@@ -21,8 +25,8 @@ spec:
         - alert: TidoApiErrors
           # Share of requests answered with 5xx over the last 5 minutes.
           expr: |
-            sum by (namespace) (rate(http_request_duration_seconds_count{job="tido-api", status_code=~"5.."}[5m]))
-              / sum by (namespace) (rate(http_request_duration_seconds_count{job="tido-api"}[5m]))
+            sum by (namespace) (rate(http_request_duration_seconds_count{job="tido-api", namespace=~"tido-staging|tido-production", status_code=~"5.."}[5m]))
+              / sum by (namespace) (rate(http_request_duration_seconds_count{job="tido-api", namespace=~"tido-staging|tido-production"}[5m]))
               > 0.05
           for: 10m
           labels:
@@ -35,7 +39,7 @@ spec:
           # 95th percentile request time, excluding the probes.
           expr: |
             histogram_quantile(0.95,
-              sum by (namespace, le) (rate(http_request_duration_seconds_bucket{job="tido-api", route!~"/healthz|/readyz"}[5m]))
+              sum by (namespace, le) (rate(http_request_duration_seconds_bucket{job="tido-api", namespace=~"tido-staging|tido-production", route!~"/healthz|/readyz"}[5m]))
             ) > 1
           for: 10m
           labels:
@@ -45,7 +49,7 @@ spec:
             description: Open the TiDo dashboard to see which route is slow.
 
         - alert: TidoDatabaseDown
-          expr: up{job="tido-db"} == 0
+          expr: up{job="tido-db", namespace=~"tido-staging|tido-production"} == 0
           for: 2m
           labels:
             severity: critical
